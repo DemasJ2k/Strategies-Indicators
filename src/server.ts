@@ -4,8 +4,6 @@ import cors from 'cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { buildMarketContext, RawMarketData } from '@agent/context';
 import { classifyMarket } from '@agent/classifier';
-import { runAgent } from '@agent/agent';
-import { Candle } from '@custom-types/candle';
 import { createLogger } from '@utils/agent_logger';
 
 const logger = createLogger('Server');
@@ -42,66 +40,55 @@ io.on('connection', (socket) => {
  * ═══════════════════════════════════════════════════════════════
  * REUSABLE ANALYSIS HELPER
  * ═══════════════════════════════════════════════════════════════
- * Factored out logic for analyze + webhooks
+ * Convert HTTP request body to RawMarketData and run analysis
  */
 async function runAnalysisFromBody(body: any, routeLabel: string) {
-  const candles: Candle[] = body.candles || [];
+  const candles = body.candles || [];
 
-  if (!body.instrument || !body.timeframe || candles.length < 3) {
-    throw new Error('Missing instrument/timeframe or not enough candles');
+  if (candles.length < 3) {
+    throw new Error('Not enough candles (minimum 3 required)');
   }
 
-  const last = candles[candles.length - 1];
-  const overrideConfig = body.overrideConfig;
-
-  // Build RawMarketData with multi-timeframe support
-  const raw: RawMarketData = {
-    instrument: body.instrument,
-    timeframe: body.timeframe,
-    timestamp: new Date(last.time || Date.now()).toISOString(),
-
-    // Multi-TF arrays - can now be different
-    htfCandles: body.htfCandles || candles,
-    executionCandles: candles,
-    candles4H: body.candles4H || body.htfCandles || candles,
-
-    lastPrice: last.close,
-
-    // Session levels
-    pdh: body.pdh,
-    pdl: body.pdl,
-    asianHigh: body.asianHigh,
-    asianLow: body.asianLow,
-    londonHigh: body.londonHigh,
-    londonLow: body.londonLow,
-
-    // Additional context
-    adrPct: body.adrPct ?? 1.0,
-    volumeProfile: body.volumeProfile ?? null,
-
-    // Override configuration from UI settings
-    overrideConfig: overrideConfig ?? null,
+  // Convert to RawMarketData format
+  const rawData: RawMarketData = {
+    candles: candles.map((c: any) => ({
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close),
+      volume: Number(c.volume || 1000000),
+      time: c.time,
+    })),
+    previousDayHigh: body.pdh || candles[candles.length - 1].high,
+    previousDayLow: body.pdl || candles[candles.length - 1].low,
   };
 
   // Build market context (runs all detectors)
-  const ctx = buildMarketContext(raw);
-
-  // Run agent to generate trade plan
-  const tradePlan = await runAgent(ctx);
+  const marketContext = buildMarketContext(rawData);
 
   // Classify playbook
-  const classification = classifyMarket(ctx);
+  const classification = classifyMarket(marketContext);
 
   const result = {
     id: genId(routeLabel),
-    timestamp: ctx.timestamp,
-    context: ctx,
+    timestamp: new Date().toISOString(),
+    instrument: body.instrument || 'UNKNOWN',
+    timeframe: body.timeframe || '15m',
+    context: marketContext,
     classification,
-    tradePlan,
+    tradePlan: {
+      playbook: classification.signal?.playbookName || 'NONE',
+      direction: classification.signal?.direction || 'NONE',
+      session: classification.signal?.session || 'UNKNOWN',
+      confidence: classification.signal?.confidence || 0,
+      context: classification.signal?.context || '',
+      tpLogic: classification.signal?.tpLogic || '',
+      overlays: {}, // Placeholder for chart overlays
+    },
   };
 
   logger.info(
-    `✓ Analysis complete [${routeLabel}]: ${body.instrument} ${body.timeframe} (${candles.length} candles)`
+    `✓ Analysis complete [${routeLabel}]: ${body.instrument} ${body.timeframe} (${candles.length} candles) → ${result.tradePlan.playbook}`
   );
 
   return result;
@@ -111,7 +98,7 @@ async function runAnalysisFromBody(body: any, routeLabel: string) {
  * ═══════════════════════════════════════════════════════════════
  * POST /analyze
  * ═══════════════════════════════════════════════════════════════
- * Main endpoint for analyzing market data with multi-timeframe support
+ * Main endpoint for analyzing market data
  */
 app.post('/analyze', async (req: Request, res: Response) => {
   try {
