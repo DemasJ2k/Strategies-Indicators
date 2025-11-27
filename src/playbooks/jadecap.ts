@@ -1,7 +1,10 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 // Import real session and liquidity detectors
 import { detectSessionSweep, detectFVG, detectMSS } from '@detectors/liquidity';
+
+// Create logger for JadeCap playbook
+const logger = createLogger('JadeCap');
 
 /**
  * ═══════════════════════════════════════════════════════════════

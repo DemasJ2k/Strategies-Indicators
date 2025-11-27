@@ -1,5 +1,8 @@
 import { SessionInfo } from '@custom-types/detector';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+
+// Create logger for session detector
+const logger = createLogger('Session-Detector');
 
 /**
  * ═══════════════════════════════════════════════════════════════

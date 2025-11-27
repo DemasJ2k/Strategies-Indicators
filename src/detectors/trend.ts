@@ -1,5 +1,8 @@
 import { TrendDetectorOutput } from '@custom-types/detector';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+
+// Create logger for trend detector
+const logger = createLogger('Trend-Detector');
 
 /**
  * ═══════════════════════════════════════════════════════════════

@@ -1,4 +1,7 @@
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+
+// Create logger for NBB detectors
+const logger = createLogger('NBB-Detector');
 
 /**
  * ═══════════════════════════════════════════════════════════════

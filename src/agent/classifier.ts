@@ -1,10 +1,13 @@
 import { MarketContext, ClassifierOutput, PlaybookSignal } from '@custom-types/context';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 // Import real playbook check functions
 import { checkNBB } from '@playbooks/nbb';
 import { checkTori } from '@playbooks/tori';
 import { checkFabio } from '@playbooks/fabio';
 import { checkJadeCap } from '@playbooks/jadecap';
+
+// Create logger for classifier
+const logger = createLogger('Classifier');
 
 /**
  * ═══════════════════════════════════════════════════════════════

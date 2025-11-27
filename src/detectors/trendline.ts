@@ -1,4 +1,7 @@
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+
+// Create logger for trendline detector
+const logger = createLogger('Trendline-Detector');
 
 /**
  * ═══════════════════════════════════════════════════════════════

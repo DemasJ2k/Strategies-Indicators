@@ -1,7 +1,10 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 // Import real auction detectors
 import { detectBalanceZone, detectAuctionTransition, detectImbalance } from '@detectors/auction';
+
+// Create logger for Fabio playbook
+const logger = createLogger('Fabio');
 
 /**
  * ═══════════════════════════════════════════════════════════════

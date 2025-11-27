@@ -1,5 +1,8 @@
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 import { detectSwingHighsLows, SwingPoint } from './liquidity';
+
+// Create logger for structure detector
+const logger = createLogger('Structure-Detector');
 
 /**
  * ═══════════════════════════════════════════════════════════════

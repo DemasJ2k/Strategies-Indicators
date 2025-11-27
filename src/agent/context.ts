@@ -5,7 +5,10 @@ import { detectSession } from '@detectors/session';
 import { detectVolume } from '@detectors/volume';
 import { detectTrendline } from '@detectors/trendline';
 import { detectMMM, detectBreakerBlock, detectPO3Zone, detectOTELevel } from '@detectors/nbb';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+
+// Create logger for context builder
+const logger = createLogger('Context-Builder');
 
 /**
  * ═══════════════════════════════════════════════════════════════

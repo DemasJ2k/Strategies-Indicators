@@ -1,11 +1,14 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 // Import real trendline detectors
 import {
   detectAscendingTrendline,
   detectDescendingTrendline,
   isTrendlineRespected,
 } from '@detectors/trendline';
+
+// Create logger for Tori playbook
+const logger = createLogger('Tori');
 
 /**
  * ═══════════════════════════════════════════════════════════════

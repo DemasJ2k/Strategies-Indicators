@@ -1,8 +1,11 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
 // Import real detectors (for additional validation if needed)
 import { detectFVG, detectMSS, detectSwingHighsLows } from '@detectors/liquidity';
 import { detectMarketStructureShift, detectOrderBlocks } from '@detectors/structure';
+
+// Create logger for NBB playbook
+const logger = createLogger('NBB');
 
 /**
  * ═══════════════════════════════════════════════════════════════
