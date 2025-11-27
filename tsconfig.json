@@ -21,7 +21,11 @@
       "@detectors/*": ["src/detectors/*"],
       "@custom-types/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"],
-      "@config/*": ["src/config/*"]
+      "@config/*": ["src/config/*"],
+      "@loaders/*": ["src/loaders/*"],
+      "@data-sources/*": ["src/data_sources/*"],
+      "@sim/*": ["src/sim/*"],
+      "@runners/*": ["src/runners/*"]
     }
   },
   "include": ["src/**/*", "index.ts"],
