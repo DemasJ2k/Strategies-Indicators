@@ -14,7 +14,9 @@ export default function CandleUploader() {
   { "time": "2025-01-01T00:30:00Z", "open": 1.2060, "high": 1.2090, "low": 1.2040, "close": 1.2050 }
 ]`);
   const setResult = useAgentStore((s) => s.setResult);
-  const setCandles = useAgentStore((s) => s.setCandles);
+  const setExecutionCandles = useAgentStore((s) => s.setExecutionCandles);
+  const htfCandles = useAgentStore((s) => s.htfCandles);
+  const candles4H = useAgentStore((s) => s.candles4H);
 
   async function sendRequest() {
     let candles;
@@ -35,9 +37,17 @@ export default function CandleUploader() {
     if (pdh) payload.pdh = Number(pdh);
     if (pdl) payload.pdl = Number(pdl);
 
+    // Attach multi-TF if available
+    if (htfCandles && htfCandles.length > 0) {
+      payload.htfCandles = htfCandles;
+    }
+    if (candles4H && candles4H.length > 0) {
+      payload.candles4H = candles4H;
+    }
+
     const res = await analyze(payload);
 
-    setCandles(candles, instrument, timeframe);
+    setExecutionCandles(candles, instrument, timeframe);
     setResult(res);
   }
 

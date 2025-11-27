@@ -12,19 +12,36 @@ export interface Candle {
 
 interface AgentState {
   result: AnalyzeResponse | null;
+
+  // Execution TF candles (main)
   candles: Candle[];
+
+  // Higher timeframe candles (e.g., 4H / Daily)
+  htfCandles: Candle[];
+
+  // Optional dedicated 4H set for Tori (can just mirror htfCandles)
+  candles4H: Candle[];
+
   instrument: string;
   timeframe: string;
+
   setResult: (r: AnalyzeResponse | null) => void;
-  setCandles: (c: Candle[], instrument: string, timeframe: string) => void;
+  setExecutionCandles: (c: Candle[], instrument: string, timeframe: string) => void;
+  setHTFCandles: (c: Candle[]) => void;
+  setCandles4H: (c: Candle[]) => void;
 }
 
 export const useAgentStore = create<AgentState>((set) => ({
   result: null,
   candles: [],
+  htfCandles: [],
+  candles4H: [],
   instrument: 'FOREX',
   timeframe: '15m',
+
   setResult: (r) => set({ result: r }),
-  setCandles: (candles, instrument, timeframe) =>
+  setExecutionCandles: (candles, instrument, timeframe) =>
     set({ candles, instrument, timeframe }),
+  setHTFCandles: (htfCandles) => set({ htfCandles }),
+  setCandles4H: (candles4H) => set({ candles4H }),
 }));

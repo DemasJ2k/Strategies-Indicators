@@ -1,109 +1,100 @@
-import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType } from 'lightweight-charts';
 import { useAgentStore } from '../store/useAgentStore';
 import { drawOverlays } from '../lib/lwOverlays';
 
 export default function Chart() {
   const chartRef = useRef<HTMLDivElement | null>(null);
-  const chartInstanceRef = useRef<IChartApi | null>(null);
+  const { candles, htfCandles, result, instrument, timeframe } = useAgentStore();
+  const [view, setView] = useState<'EXEC' | 'HTF'>('EXEC');
 
-  const candles = useAgentStore((s) => s.candles);
-  const result = useAgentStore((s) => s.result);
-  const instrument = useAgentStore((s) => s.instrument);
-  const timeframe = useAgentStore((s) => s.timeframe);
+  const activeCandles = view === 'EXEC' ? candles : htfCandles;
+  const activeLabel =
+    view === 'EXEC' ? `${instrument} · ${timeframe}` : `${instrument} · HTF`;
 
   useEffect(() => {
-    if (!chartRef.current || candles.length === 0) return;
+    if (!chartRef.current || activeCandles.length === 0) return;
 
-    // Create chart
     const chart = createChart(chartRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: '#06070a' },
-        textColor: '#9ca3af',
+        textColor: '#ccc',
       },
       grid: {
-        vertLines: { color: '#111827' },
-        horzLines: { color: '#111827' },
+        vertLines: { color: '#111' },
+        horzLines: { color: '#111' },
       },
       width: chartRef.current.clientWidth,
       height: 400,
+      timeScale: {
+        borderColor: '#222',
+      },
+      rightPriceScale: {
+        borderColor: '#222',
+      },
     });
 
-    chartInstanceRef.current = chart;
-
-    // Add candlestick series
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#00ff99',
-      downColor: '#ff6464',
-      borderUpColor: '#00ff99',
-      borderDownColor: '#ff6464',
       wickUpColor: '#00ff99',
       wickDownColor: '#ff6464',
+      borderUpColor: '#00ff99',
+      borderDownColor: '#ff6464',
+      upColor: '#00ff9955',
+      downColor: '#ff646455',
     });
 
-    // Format candle data
-    const formatted = candles.map((c: any, i: number) => {
-      let time: number;
-      if (typeof c.time === 'string') {
-        time = Math.floor(new Date(c.time).getTime() / 1000);
-      } else {
-        time = Math.floor(c.time / 1000);
-      }
-
-      return {
-        time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-        index: i,
-      };
-    });
+    const formatted = activeCandles.map((c: any, i: number) => ({
+      time:
+        typeof c.time === 'string'
+          ? new Date(c.time).getTime() / 1000
+          : Math.floor(c.time / 1000),
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      index: i,
+    }));
 
     candleSeries.setData(formatted);
-    chart.timeScale().fitContent();
 
-    // Draw overlays if available
-    if (result?.tradePlan?.overlays) {
+    if (result?.tradePlan?.overlays && view === 'EXEC') {
       drawOverlays(chart, candleSeries, formatted, result.tradePlan.overlays);
     }
 
-    // Handle resize
     const handleResize = () => {
-      if (chartRef.current) {
-        chart.applyOptions({
-          width: chartRef.current.clientWidth,
-        });
-      }
+      chart.applyOptions({ width: chartRef.current?.clientWidth });
+      chart.timeScale().fitContent();
     };
 
     window.addEventListener('resize', handleResize);
+    chart.timeScale().fitContent();
 
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
-      chartInstanceRef.current = null;
     };
-  }, [candles, result]);
-
-  if (candles.length === 0) {
-    return (
-      <div className="p-4 bg-[#11131a] rounded h-full">
-        <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
-        <p className="text-sm text-gray-400">No candles loaded yet.</p>
-      </div>
-    );
-  }
+  }, [activeCandles, result, view]);
 
   return (
     <div className="p-4 bg-[#11131a] rounded h-full">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xl font-semibold">Price Chart</h2>
-        <span className="text-xs text-gray-400">
-          {instrument} · {timeframe} · {candles.length} candles
-        </span>
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span>
+            {activeLabel} · {activeCandles.length} candles
+          </span>
+          <select
+            className="bg-black border border-gray-700 rounded px-2 py-1"
+            value={view}
+            onChange={(e) => setView(e.target.value as any)}
+          >
+            <option value="EXEC">Execution</option>
+            <option value="HTF">HTF</option>
+          </select>
+        </div>
       </div>
-      <div ref={chartRef} className="w-full h-[400px]" />
+
+      <div ref={chartRef} className="w-full h-[400px]"></div>
     </div>
   );
 }
