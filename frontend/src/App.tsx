@@ -1,4 +1,5 @@
 import React from 'react';
+import LiveListener from './components/LiveListener';
 import CandleUploader from './components/CandleUploader';
 import CsvUploader from './components/CsvUploader';
 import ReplayController from './components/ReplayController';
@@ -11,6 +12,8 @@ import SettingsPanel from './components/SettingsPanel';
 export default function App() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <LiveListener />
+
       <h1 className="text-3xl font-bold mb-2">Market Playbook Agent</h1>
       <p className="text-sm text-gray-400">
         Upload candles or import CSV. Replay the market and watch NBB / Tori / Fabio / JadeCap rotate in real time.

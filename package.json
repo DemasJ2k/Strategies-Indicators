@@ -13,12 +13,18 @@
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
-  "keywords": ["trading", "agent", "classifier", "playbook"],
+  "keywords": [
+    "trading",
+    "agent",
+    "classifier",
+    "playbook"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
+    "@types/socket.io": "^3.0.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.50.0",
@@ -29,5 +35,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.2.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
 }
