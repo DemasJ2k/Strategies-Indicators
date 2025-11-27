@@ -1,168 +1,145 @@
-import { IChartApi, ISeriesApi, LineStyle } from 'lightweight-charts';
+// Helper: crude session classification by UTC hour
+function getSessionFromTime(timeSec: number): 'ASIAN' | 'LONDON' | 'NEW_YORK' | 'OTHER' {
+  const d = new Date(timeSec * 1000);
+  const h = d.getUTCHours();
 
-export function drawOverlays(
-  chart: IChartApi,
-  candleSeries: ISeriesApi<'Candlestick'>,
-  candles: any[],
-  overlays: any
-) {
-  // 1) Liquidity sweeps - horizontal price lines
-  if (overlays.liquiditySweeps) {
-    overlays.liquiditySweeps.forEach((sweep: any) => {
-      candleSeries.createPriceLine({
-        price: sweep.price,
-        color: sweep.type === 'buy' ? 'rgba(255,0,0,0.6)' : 'rgba(0,200,255,0.6)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: sweep.type === 'buy' ? 'Buy Liq' : 'Sell Liq',
+  if (h >= 0 && h < 8) return 'ASIAN';
+  if (h >= 8 && h < 12) return 'LONDON';
+  if (h >= 12 && h < 17) return 'NEW_YORK';
+  return 'OTHER';
+}
+
+function buildSessionMarkers(candles: any[]) {
+  const markers: any[] = [];
+  let lastSession: string | null = null;
+
+  candles.forEach((c, i) => {
+    const session = getSessionFromTime(c.time);
+    if (session === 'OTHER') return;
+
+    if (session !== lastSession) {
+      markers.push({
+        time: c.time,
+        position: 'belowBar',
+        color:
+          session === 'ASIAN'
+            ? '#22c55e'
+            : session === 'LONDON'
+            ? '#facc15'
+            : '#38bdf8',
+        shape: 'arrowUp',
+        text: session === 'ASIAN' ? 'A' : session === 'LONDON' ? 'L' : 'NY',
       });
-    });
+      lastSession = session;
+    }
+  });
+
+  return markers;
+}
+
+export function drawOverlays(chart: any, candleSeries: any, candles: any[], overlays: any) {
+  // ---- TRENDLINE ----
+  if (overlays.trendline) {
+    const { p1, p2 } = overlays.trendline;
+
+    chart
+      .addLineSeries({
+        color: 'rgba(100,120,255,0.9)',
+        lineWidth: 2,
+      })
+      .setData([
+        { time: candles[p1.index].time, value: p1.price },
+        { time: candles[p2.index].time, value: p2.price },
+      ]);
   }
 
-  // 2) MSS (market structure shift) - vertical markers
-  if (overlays.mss) {
-    overlays.mss.forEach((mss: any) => {
-      if (mss.index >= 0 && mss.index < candles.length) {
-        const candle = candles[mss.index];
-        candleSeries.setMarkers([
-          ...((candleSeries as any).markers?.() || []),
-          {
-            time: candle.time,
-            position: mss.direction === 'bearish' ? 'aboveBar' : 'belowBar',
-            color: mss.direction === 'bearish' ? '#ff4444' : '#44ff44',
-            shape: 'arrowDown',
-            text: 'MSS',
-          },
-        ]);
-      }
+  // ---- BREAKER BLOCK ----
+  if (overlays.breaker) {
+    const { from, to } = overlays.breaker;
+
+    const boxSeries = chart.addHistogramSeries({
+      color: 'rgba(0, 200, 255, 0.15)',
+      priceFormat: { type: 'price' },
     });
+
+    const boxData = candles.map((c) => ({
+      time: c.time,
+      value: to,
+    }));
+
+    boxSeries.setData(boxData);
   }
 
-  // 3) FVG zones - shaded areas (using line series as zones)
+  // ---- FVG ZONES ----
   if (overlays.fvg) {
     overlays.fvg.forEach((fvg: any) => {
-      // Create upper and lower boundary lines for FVG
-      candleSeries.createPriceLine({
-        price: fvg.from,
-        color: 'rgba(255, 165, 0, 0.4)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: false,
-        title: 'FVG',
+      const box = chart.addHistogramSeries({
+        color: 'rgba(255, 165, 0, 0.15)',
       });
-      candleSeries.createPriceLine({
-        price: fvg.to,
-        color: 'rgba(255, 165, 0, 0.4)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: false,
-        title: '',
-      });
+
+      box.setData(
+        candles.map((c, i) =>
+          i === fvg.index ? { time: c.time, value: fvg.to } : { time: c.time, value: null }
+        )
+      );
     });
   }
 
-  // 4) Breaker block - horizontal zone
-  if (overlays.breaker) {
-    candleSeries.createPriceLine({
-      price: overlays.breaker.from,
-      color: 'rgba(0, 200, 255, 0.4)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Breaker',
-    });
-    candleSeries.createPriceLine({
-      price: overlays.breaker.to,
-      color: 'rgba(0, 200, 255, 0.4)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: false,
-      title: '',
-    });
-  }
-
-  // 5) Trendline - line connecting two points
-  if (overlays.trendline) {
-    const tl = overlays.trendline;
-    if (tl.p1.index >= 0 && tl.p1.index < candles.length &&
-        tl.p2.index >= 0 && tl.p2.index < candles.length) {
-      const lineSeries = chart.addLineSeries({
-        color: 'rgba(120,120,255,0.8)',
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-      });
-
-      lineSeries.setData([
-        { time: candles[tl.p1.index].time, value: tl.p1.price },
-        { time: candles[tl.p2.index].time, value: tl.p2.price },
-      ]);
-    }
-  }
-
-  // 6) Imbalance zones (Fabio) - similar to FVG
+  // ---- IMBALANCE ZONES ----
   if (overlays.imbalanceZones) {
-    overlays.imbalanceZones.forEach((zone: any) => {
-      candleSeries.createPriceLine({
-        price: zone.from,
-        color: 'rgba(255, 0, 200, 0.3)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: false,
-        title: 'Imbalance',
+    overlays.imbalanceZones.forEach((z: any) => {
+      const box = chart.addHistogramSeries({
+        color: 'rgba(255, 0, 200, 0.15)',
       });
-      candleSeries.createPriceLine({
-        price: zone.to,
-        color: 'rgba(255, 0, 200, 0.3)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: false,
-        title: '',
+
+      box.setData(
+        candles.map((c, i) =>
+          i === z.index ? { time: c.time, value: z.to } : { time: c.time, value: null }
+        )
+      );
+    });
+  }
+
+  // ---- LIQUIDITY SWEEPS ----
+  if (overlays.liquiditySweeps) {
+    const sweepSeries = chart.addLineSeries({
+      color: 'rgba(255, 0, 0, 0.9)',
+      lineWidth: 1,
+      lineStyle: 2,
+    });
+
+    overlays.liquiditySweeps.forEach((sweep: any) => {
+      const c = candles[sweep.index];
+      if (!c) return;
+
+      sweepSeries.update({
+        time: c.time,
+        value: sweep.price,
       });
     });
   }
 
-  // 7) PDH/PDL from context (if passed in overlays)
-  if (overlays.pdh !== undefined) {
-    candleSeries.createPriceLine({
-      price: overlays.pdh,
-      color: 'rgba(100, 200, 255, 0.7)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'PDH',
+  // ---- MSS EVENTS ----
+  if (overlays.mss) {
+    overlays.mss.forEach((mss: any) => {
+      const c = candles[mss.index];
+      if (!c) return;
+
+      const color = mss.direction === 'bearish' ? '#ff4444' : '#44ff44';
+
+      chart
+        .addLineSeries({
+          color,
+          lineWidth: 2,
+        })
+        .setData([
+          { time: c.time, value: c.high },
+          { time: c.time, value: c.low },
+        ]);
     });
   }
 
-  if (overlays.pdl !== undefined) {
-    candleSeries.createPriceLine({
-      price: overlays.pdl,
-      color: 'rgba(100, 200, 255, 0.7)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'PDL',
-    });
-  }
-
-  // 8) OTE zone for NBB playbook (if passed in overlays)
-  if (overlays.oteFrom !== undefined && overlays.oteTo !== undefined) {
-    candleSeries.createPriceLine({
-      price: Math.min(overlays.oteFrom, overlays.oteTo),
-      color: 'rgba(255, 200, 0, 0.5)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'OTE Lower',
-    });
-    candleSeries.createPriceLine({
-      price: Math.max(overlays.oteFrom, overlays.oteTo),
-      color: 'rgba(255, 200, 0, 0.5)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'OTE Upper',
-    });
-  }
+  // ---- SESSION MARKERS ----
+  const sessionMarkers = buildSessionMarkers(candles);
+  candleSeries.setMarkers(sessionMarkers);
 }
