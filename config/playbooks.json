@@ -1,0 +1,59 @@
+{
+  "playbooks": {
+    "NBB": {
+      "enabled": true,
+      "priority": 1,
+      "minConfidence": 85,
+      "description": "Market Maker Model - PO3/OTE strategy",
+      "requiredConditions": [
+        "htfBias",
+        "po3Zone",
+        "liquiditySweep",
+        "structureBreak",
+        "volumeSpike",
+        "oteRetrace"
+      ]
+    },
+    "JadeCap": {
+      "enabled": true,
+      "priority": 2,
+      "minConfidence": 80,
+      "description": "Liquidity & Volatility Model - Session-based sweeps",
+      "requiredConditions": [
+        "sessionSweep",
+        "nyWindow",
+        "fvgOrMss",
+        "volatilityContext"
+      ]
+    },
+    "Tori": {
+      "enabled": true,
+      "priority": 3,
+      "minConfidence": 75,
+      "description": "Trendline Strategy - Clean structure plays",
+      "requiredConditions": [
+        "htfTrendlineAlignment",
+        "trendlineRespected",
+        "cleanStructure",
+        "sessionTiming"
+      ]
+    },
+    "Fabio": {
+      "enabled": true,
+      "priority": 4,
+      "minConfidence": 70,
+      "description": "Auction Market Theory - Balance to Imbalance transitions",
+      "requiredConditions": [
+        "balanceToImbalance",
+        "lvnDetected",
+        "footprintAggression",
+        "orderflowConfirmation"
+      ]
+    }
+  },
+  "globalSettings": {
+    "enableAllPlaybooks": true,
+    "maxPlaybooksPerSignal": 1,
+    "requireMinConfidence": true
+  }
+}

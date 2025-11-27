@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@agent/*": ["src/agent/*"],
+      "@playbooks/*": ["src/playbooks/*"],
+      "@detectors/*": ["src/detectors/*"],
+      "@custom-types/*": ["src/types/*"],
+      "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"],
+      "@loaders/*": ["src/loaders/*"],
+      "@data-sources/*": ["src/data_sources/*"],
+      "@sim/*": ["src/sim/*"],
+      "@runners/*": ["src/runners/*"]
+    }
+  },
+  "include": ["src/**/*", "index.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
