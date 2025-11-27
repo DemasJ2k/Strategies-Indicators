@@ -1,5 +1,6 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { createLogger } from '@utils/agent_logger';
+import { getPlaybookConfig, isPlaybookEnabled } from '@config/config';
 // Import real detectors (for additional validation if needed)
 import { detectFVG, detectMSS, detectSwingHighsLows } from '@detectors/liquidity';
 import { detectMarketStructureShift, detectOrderBlocks } from '@detectors/structure';
@@ -31,7 +32,25 @@ const logger = createLogger('NBB');
  * @returns PlaybookSignal or null if conditions not met
  */
 export function checkNBB(context: MarketContext): PlaybookSignal | null {
-  return executeNBB(context);
+  // Check if playbook is enabled in config
+  if (!isPlaybookEnabled('NBB')) {
+    logger.warn('  ✗ [NBB] Playbook is disabled in config\n');
+    return null;
+  }
+
+  // Execute validation logic
+  const signal = executeNBB(context);
+
+  // If signal generated, check minimum confidence threshold
+  if (signal) {
+    const config = getPlaybookConfig('NBB');
+    if (signal.confidence < config.minConfidence) {
+      logger.warn(`  ✗ [NBB] Confidence ${signal.confidence}% below minimum threshold ${config.minConfidence}%\n`);
+      return null;
+    }
+  }
+
+  return signal;
 }
 
 export function executeNBB(context: MarketContext): PlaybookSignal | null {

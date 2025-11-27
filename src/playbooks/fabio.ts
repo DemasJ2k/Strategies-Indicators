@@ -1,5 +1,6 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { createLogger } from '@utils/agent_logger';
+import { getPlaybookConfig, isPlaybookEnabled } from '@config/config';
 // Import real auction detectors
 import { detectBalanceZone, detectAuctionTransition, detectImbalance } from '@detectors/auction';
 
@@ -25,7 +26,25 @@ const logger = createLogger('Fabio');
  * @returns PlaybookSignal or null if conditions not met
  */
 export function checkFabio(context: MarketContext): PlaybookSignal | null {
-  return executeFabio(context);
+  // Check if playbook is enabled in config
+  if (!isPlaybookEnabled('Fabio')) {
+    logger.warn('  ✗ [FABIO] Playbook is disabled in config\n');
+    return null;
+  }
+
+  // Execute validation logic
+  const signal = executeFabio(context);
+
+  // If signal generated, check minimum confidence threshold
+  if (signal) {
+    const config = getPlaybookConfig('Fabio');
+    if (signal.confidence < config.minConfidence) {
+      logger.warn(`  ✗ [FABIO] Confidence ${signal.confidence}% below minimum threshold ${config.minConfidence}%\n`);
+      return null;
+    }
+  }
+
+  return signal;
 }
 
 export function executeFabio(context: MarketContext): PlaybookSignal | null {

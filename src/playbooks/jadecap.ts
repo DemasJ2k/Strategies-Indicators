@@ -1,5 +1,6 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { createLogger } from '@utils/agent_logger';
+import { getPlaybookConfig, isPlaybookEnabled } from '@config/config';
 // Import real session and liquidity detectors
 import { detectSessionSweep, detectFVG, detectMSS } from '@detectors/liquidity';
 
@@ -25,7 +26,25 @@ const logger = createLogger('JadeCap');
  * @returns PlaybookSignal or null if conditions not met
  */
 export function checkJadeCap(context: MarketContext): PlaybookSignal | null {
-  return executeJadeCap(context);
+  // Check if playbook is enabled in config
+  if (!isPlaybookEnabled('JadeCap')) {
+    logger.warn('  ✗ [JADECAP] Playbook is disabled in config\n');
+    return null;
+  }
+
+  // Execute validation logic
+  const signal = executeJadeCap(context);
+
+  // If signal generated, check minimum confidence threshold
+  if (signal) {
+    const config = getPlaybookConfig('JadeCap');
+    if (signal.confidence < config.minConfidence) {
+      logger.warn(`  ✗ [JADECAP] Confidence ${signal.confidence}% below minimum threshold ${config.minConfidence}%\n`);
+      return null;
+    }
+  }
+
+  return signal;
 }
 
 export function executeJadeCap(context: MarketContext): PlaybookSignal | null {

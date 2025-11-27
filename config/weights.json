@@ -1,0 +1,41 @@
+{
+  "detectorWeights": {
+    "htfTrend": 1.0,
+    "liquiditySweep": 0.9,
+    "structureBreak": 0.85,
+    "volumeSpike": 0.8,
+    "oteRetrace": 0.75,
+    "trendline": 0.7,
+    "balanceToImbalance": 0.8,
+    "sessionTiming": 0.6,
+    "displacement": 0.75,
+    "fvg": 0.7,
+    "mss": 0.85,
+    "orderBlocks": 0.75,
+    "po3Zone": 0.8,
+    "mmmPhase": 0.7
+  },
+  "confidenceModifiers": {
+    "strongVolume": 5,
+    "optimalOTE": 5,
+    "multipleTouches": 10,
+    "clearLVN": 7,
+    "strongMove": 8,
+    "highVolatility": 5
+  },
+  "thresholds": {
+    "minSwingTouches": 2,
+    "minVolumeSpikeRatio": 1.5,
+    "minDisplacementRatio": 0.7,
+    "oteMinLevel": 0.62,
+    "oteMaxLevel": 0.79,
+    "balanceVolatilityThreshold": 0.35,
+    "balanceRangeThreshold": 0.03
+  },
+  "sessionWeights": {
+    "asian": 0.6,
+    "london": 0.9,
+    "ny": 1.0,
+    "overlap": 1.0
+  }
+}

@@ -1,6 +1,9 @@
 import { buildMarketContext, RawMarketData } from '@agent/context';
 import { classifyMarket } from '@agent/classifier';
-import { logger } from '@utils/logger';
+import { createLogger } from '@utils/agent_logger';
+import { loadConfig, logConfigSummary } from '@config/config';
+
+const logger = createLogger('Main');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -17,6 +20,10 @@ async function main() {
     logger.info('═══════════════════════════════════════════════════');
     logger.info('🤖 MARKET PLAYBOOK AGENT - VERSION 1');
     logger.info('═══════════════════════════════════════════════════\n');
+
+    // Load configuration
+    loadConfig();
+    logConfigSummary();
 
     // ─────────────────────────────────────────────────────────────
     // STEP 1: Raw Market Data (Mock)

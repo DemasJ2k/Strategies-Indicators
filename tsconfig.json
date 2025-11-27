@@ -20,7 +20,8 @@
       "@playbooks/*": ["src/playbooks/*"],
       "@detectors/*": ["src/detectors/*"],
       "@custom-types/*": ["src/types/*"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"]
     }
   },
   "include": ["src/**/*", "index.ts"],

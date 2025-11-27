@@ -1,5 +1,6 @@
 import { MarketContext, ClassifierOutput, PlaybookSignal } from '@custom-types/context';
 import { createLogger } from '@utils/agent_logger';
+import { getAllPlaybookConfigs } from '@config/config';
 // Import real playbook check functions
 import { checkNBB } from '@playbooks/nbb';
 import { checkTori } from '@playbooks/tori';
@@ -9,53 +10,59 @@ import { checkJadeCap } from '@playbooks/jadecap';
 // Create logger for classifier
 const logger = createLogger('Classifier');
 
+// Playbook check function mapping
+const playbookCheckers: Record<string, (context: MarketContext) => PlaybookSignal | null> = {
+  NBB: checkNBB,
+  Tori: checkTori,
+  Fabio: checkFabio,
+  JadeCap: checkJadeCap,
+};
+
 /**
  * ═══════════════════════════════════════════════════════════════
  * MAIN CLASSIFIER — THE BRAIN
  * ═══════════════════════════════════════════════════════════════
- * Priority logic:
- *   1. NBB (HTF + PO3 + OTE)
- *   2. JadeCap (Session sweep)
- *   3. Tori (Trendline)
- *   4. Fabio (Balance → Imbalance)
+ * Dynamic priority logic based on config/playbooks.json
+ * - Playbooks checked in order of priority (lowest number = highest priority)
+ * - Only enabled playbooks are checked
+ * - Returns first playbook that matches all conditions
  *
  * NOTE: This classifier now calls REAL playbook functions from @playbooks/*
+ * and uses config-driven priority ordering
  */
 export function classifyMarket(market: MarketContext): ClassifierOutput {
   logger.info('═══════════════════════════════════════════');
   logger.info('🧠 CLASSIFIER ANALYZING MARKET CONDITIONS...');
   logger.info('═══════════════════════════════════════════\n');
 
-  // Priority 1: Check NBB
-  logger.info('→ Checking NBB Model (Priority 1)...');
-  const nbbSignal = checkNBB(market);
-  if (nbbSignal) {
-    logger.success('✓✓✓ NBB MODEL TRIGGERED ✓✓✓');
-    return { signal: nbbSignal, priority: 1, timestamp: new Date() };
-  }
+  // Get playbooks sorted by priority from config
+  const playbooks = getAllPlaybookConfigs();
 
-  // Priority 2: Check JadeCap
-  logger.info('→ Checking JadeCap Model (Priority 2)...');
-  const jadecapSignal = checkJadeCap(market);
-  if (jadecapSignal) {
-    logger.success('✓✓✓ JADECAP MODEL TRIGGERED ✓✓✓');
-    return { signal: jadecapSignal, priority: 2, timestamp: new Date() };
-  }
+  // Check each playbook in priority order
+  for (const { name, config } of playbooks) {
+    // Skip disabled playbooks
+    if (!config.enabled) {
+      logger.info(`→ Skipping ${name} (disabled in config)`);
+      continue;
+    }
 
-  // Priority 3: Check Tori
-  logger.info('→ Checking Tori Model (Priority 3)...');
-  const toriSignal = checkTori(market);
-  if (toriSignal) {
-    logger.success('✓✓✓ TORI MODEL TRIGGERED ✓✓✓');
-    return { signal: toriSignal, priority: 3, timestamp: new Date() };
-  }
+    logger.info(`→ Checking ${name} Model (Priority ${config.priority})...`);
 
-  // Priority 4: Check Fabio
-  logger.info('→ Checking Fabio Model (Priority 4)...');
-  const fabioSignal = checkFabio(market);
-  if (fabioSignal) {
-    logger.success('✓✓✓ FABIO MODEL TRIGGERED ✓✓✓');
-    return { signal: fabioSignal, priority: 4, timestamp: new Date() };
+    // Get the check function for this playbook
+    const checkFunction = playbookCheckers[name];
+    if (!checkFunction) {
+      logger.warn(`⚠️  No check function found for playbook: ${name}`);
+      continue;
+    }
+
+    // Execute playbook check
+    const signal = checkFunction(market);
+
+    // If playbook matched, return immediately
+    if (signal) {
+      logger.success(`✓✓✓ ${name.toUpperCase()} MODEL TRIGGERED ✓✓✓`);
+      return { signal, priority: config.priority, timestamp: new Date() };
+    }
   }
 
   // No playbook matched

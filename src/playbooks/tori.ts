@@ -1,5 +1,6 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { createLogger } from '@utils/agent_logger';
+import { getPlaybookConfig, isPlaybookEnabled } from '@config/config';
 // Import real trendline detectors
 import {
   detectAscendingTrendline,
@@ -29,7 +30,25 @@ const logger = createLogger('Tori');
  * @returns PlaybookSignal or null if conditions not met
  */
 export function checkTori(context: MarketContext): PlaybookSignal | null {
-  return executeTori(context);
+  // Check if playbook is enabled in config
+  if (!isPlaybookEnabled('Tori')) {
+    logger.warn('  ✗ [TORI] Playbook is disabled in config\n');
+    return null;
+  }
+
+  // Execute validation logic
+  const signal = executeTori(context);
+
+  // If signal generated, check minimum confidence threshold
+  if (signal) {
+    const config = getPlaybookConfig('Tori');
+    if (signal.confidence < config.minConfidence) {
+      logger.warn(`  ✗ [TORI] Confidence ${signal.confidence}% below minimum threshold ${config.minConfidence}%\n`);
+      return null;
+    }
+  }
+
+  return signal;
 }
 
 export function executeTori(context: MarketContext): PlaybookSignal | null {
