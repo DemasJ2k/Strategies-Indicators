@@ -5,8 +5,13 @@ import { useAgentStore } from '../store/useAgentStore';
 export default function CandleUploader() {
   const [instrument, setInstrument] = useState('FOREX');
   const [timeframe, setTimeframe] = useState('15m');
-  const [candlesText, setCandlesText] = useState('');
+  const [candlesText, setCandlesText] = useState(`[
+  { "time": "2025-01-01T00:00:00Z", "open": 1.2000, "high": 1.2050, "low": 1.1990, "close": 1.2030 },
+  { "time": "2025-01-01T00:15:00Z", "open": 1.2030, "high": 1.2080, "low": 1.2020, "close": 1.2060 },
+  { "time": "2025-01-01T00:30:00Z", "open": 1.2060, "high": 1.2090, "low": 1.2040, "close": 1.2050 }
+]`);
   const setResult = useAgentStore((s) => s.setResult);
+  const setCandles = useAgentStore((s) => s.setCandles);
 
   async function sendRequest() {
     let candles;
@@ -23,6 +28,7 @@ export default function CandleUploader() {
       candles,
     });
 
+    setCandles(candles, instrument, timeframe);
     setResult(res);
   }
 
@@ -38,6 +44,7 @@ export default function CandleUploader() {
           <option value="FOREX">FOREX</option>
           <option value="FUTURES">FUTURES</option>
           <option value="CRYPTO">CRYPTO</option>
+          <option value="OTHER">OTHER</option>
         </select>
         <input
           className="p-2 bg-black border border-gray-700 rounded"
