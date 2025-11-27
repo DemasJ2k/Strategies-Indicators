@@ -41,6 +41,9 @@ interface AgentState {
   settings: PlaybookSettings;
   risk: RiskSettings;
 
+  loading: boolean;
+  error: string | null;
+
   setResult: (r: AnalyzeResponse | null) => void;
   setExecutionCandles: (c: Candle[], instrument: string, timeframe: string) => void;
   setHTFCandles: (c: Candle[]) => void;
@@ -48,6 +51,8 @@ interface AgentState {
 
   setSettings: (s: Partial<PlaybookSettings>) => void;
   setRisk: (r: Partial<RiskSettings>) => void;
+  setLoading: (b: boolean) => void;
+  setError: (e: string | null) => void;
 }
 
 export const useAgentStore = create<AgentState>((set) => ({
@@ -71,6 +76,9 @@ export const useAgentStore = create<AgentState>((set) => ({
     rrTargets: [1, 2, 4],
   },
 
+  loading: false,
+  error: null,
+
   setResult: (r) => set({ result: r }),
   setExecutionCandles: (candles, instrument, timeframe) =>
     set({ candles, instrument, timeframe }),
@@ -82,4 +90,7 @@ export const useAgentStore = create<AgentState>((set) => ({
 
   setRisk: (r) =>
     set((state) => ({ risk: { ...state.risk, ...r } })),
+
+  setLoading: (b) => set({ loading: b }),
+  setError: (e) => set({ error: e }),
 }));

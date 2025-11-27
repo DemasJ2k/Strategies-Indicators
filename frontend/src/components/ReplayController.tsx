@@ -8,6 +8,8 @@ export default function ReplayController() {
   const timeframe = useAgentStore((s) => s.timeframe);
   const setResult = useAgentStore((s) => s.setResult);
   const settings = useAgentStore((s) => s.settings);
+  const setLoading = useAgentStore((s) => s.setLoading);
+  const setError = useAgentStore((s) => s.setError);
 
   const [index, setIndex] = useState(50);
   const [playing, setPlaying] = useState(false);
@@ -18,15 +20,24 @@ export default function ReplayController() {
     if (i < 2 || i >= candles.length) return;
 
     const slice = candles.slice(0, i);
-    const res = await analyze({
-      instrument,
-      timeframe,
-      candles: slice,
-      overrideConfig: settings,
-    });
 
-    setIndex(i);
-    setResult(res);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await analyze({
+        instrument,
+        timeframe,
+        candles: slice,
+        overrideConfig: settings,
+      });
+
+      setIndex(i);
+      setResult(res);
+    } catch (err: any) {
+      setError(err.message || 'Analysis error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function stepForward() {

@@ -18,6 +18,8 @@ export default function CandleUploader() {
   const htfCandles = useAgentStore((s) => s.htfCandles);
   const candles4H = useAgentStore((s) => s.candles4H);
   const settings = useAgentStore((s) => s.settings);
+  const setLoading = useAgentStore((s) => s.setLoading);
+  const setError = useAgentStore((s) => s.setError);
 
   async function sendRequest() {
     let candles;
@@ -47,10 +49,17 @@ export default function CandleUploader() {
       payload.candles4H = candles4H;
     }
 
-    const res = await analyze(payload);
-
-    setExecutionCandles(candles, instrument, timeframe);
-    setResult(res);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await analyze(payload);
+      setExecutionCandles(candles, instrument, timeframe);
+      setResult(res);
+    } catch (err: any) {
+      setError(err.message || 'Analysis error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
