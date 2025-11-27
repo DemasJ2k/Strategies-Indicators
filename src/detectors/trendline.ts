@@ -95,7 +95,7 @@ export function detectTrendline(
  * Detect ascending trendline (support line)
  * Connects higher lows
  */
-function detectAscendingTrendline(data: PriceData[]): TrendlineOutput {
+export function detectAscendingTrendline(data: PriceData[]): TrendlineOutput {
   const lows = data.map((c) => c.low);
 
   // Find swing lows (local minima)
@@ -144,7 +144,7 @@ function detectAscendingTrendline(data: PriceData[]): TrendlineOutput {
  * Detect descending trendline (resistance line)
  * Connects lower highs
  */
-function detectDescendingTrendline(data: PriceData[]): TrendlineOutput {
+export function detectDescendingTrendline(data: PriceData[]): TrendlineOutput {
   const highs = data.map((c) => c.high);
 
   // Find swing highs (local maxima)
@@ -187,4 +187,13 @@ function detectDescendingTrendline(data: PriceData[]): TrendlineOutput {
     respected,
     type: 'descending',
   };
+}
+
+/**
+ * Check if trendline is being respected
+ * @param trendlineOutput - Result from detectTrendline
+ * @returns boolean indicating if trendline is respected
+ */
+export function isTrendlineRespected(trendlineOutput: TrendlineOutput): boolean {
+  return trendlineOutput.exists && trendlineOutput.respected;
 }

@@ -104,6 +104,65 @@ function detectSwingLows(data: PriceData[]): number[] {
 }
 
 /**
+ * ═══════════════════════════════════════════════════════════════
+ * EXPORTED: SWING HIGHS/LOWS DETECTION (Foundation for all playbooks)
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+export interface SwingPoint {
+  index: number;
+  level: number;
+  type: 'high' | 'low';
+}
+
+/**
+ * Detect Swing Highs and Swing Lows
+ * This is the REAL foundation - identifies local peaks and troughs
+ *
+ * Algorithm:
+ * - Swing High: candle.high > prev.high && candle.high > next.high
+ * - Swing Low: candle.low < prev.low && candle.low < next.low
+ *
+ * @param candles - Array of price data
+ * @returns Object with swingHighs and swingLows arrays with index and level
+ */
+export function detectSwingHighsLows(candles: PriceData[]): {
+  swingHighs: SwingPoint[];
+  swingLows: SwingPoint[];
+} {
+  const swingHighs: SwingPoint[] = [];
+  const swingLows: SwingPoint[] = [];
+
+  if (candles.length < 3) {
+    return { swingHighs: [], swingLows: [] };
+  }
+
+  // Detect swing highs (local peaks)
+  for (let i = 1; i < candles.length - 1; i++) {
+    if (candles[i].high > candles[i - 1].high && candles[i].high > candles[i + 1].high) {
+      swingHighs.push({
+        index: i,
+        level: candles[i].high,
+        type: 'high',
+      });
+    }
+  }
+
+  // Detect swing lows (local troughs)
+  for (let i = 1; i < candles.length - 1; i++) {
+    if (candles[i].low < candles[i - 1].low && candles[i].low < candles[i + 1].low) {
+      swingLows.push({
+        index: i,
+        level: candles[i].low,
+        type: 'low',
+      });
+    }
+  }
+
+  return { swingHighs, swingLows };
+}
+
+/**
  * Detect swept liquidity levels
  * A sweep occurs when price briefly moves beyond a level then reverses
  */
