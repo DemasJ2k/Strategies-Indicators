@@ -1,90 +1,92 @@
-import React, { useMemo } from 'react';
-import { Line } from 'react-chartjs-2';
+import React, { useEffect, useRef } from 'react';
+import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
 import { useAgentStore } from '../store/useAgentStore';
-import { generateAnnotations } from '../lib/chartOverlays';
-import 'chart.js/auto';
+import { drawOverlays } from '../lib/lwOverlays';
 
 export default function Chart() {
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const chartInstanceRef = useRef<IChartApi | null>(null);
+
   const candles = useAgentStore((s) => s.candles);
   const result = useAgentStore((s) => s.result);
   const instrument = useAgentStore((s) => s.instrument);
   const timeframe = useAgentStore((s) => s.timeframe);
 
-  const context = result?.context;
-  const plan = result?.tradePlan;
+  useEffect(() => {
+    if (!chartRef.current || candles.length === 0) return;
 
-  const pdh = context?.pdh;
-  const pdl = context?.pdl;
-
-  const isNBB = plan?.playbook === 'NBB';
-  const oteFrom = plan?.entry?.zone?.from;
-  const oteTo = plan?.entry?.zone?.to;
-
-  const chartData = useMemo(() => {
-    if (!candles || candles.length === 0) {
-      return null;
-    }
-
-    const labels = candles.map((c) =>
-      typeof c.time === 'string' ? c.time : new Date(c.time).toISOString()
-    );
-    const closes = candles.map((c) => c.close);
-
-    const datasets: any[] = [
-      {
-        label: 'Close',
-        data: closes,
-        borderWidth: 1.5,
-        tension: 0.1,
+    // Create chart
+    const chart = createChart(chartRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#06070a' },
+        textColor: '#9ca3af',
       },
-    ];
+      grid: {
+        vertLines: { color: '#111827' },
+        horzLines: { color: '#111827' },
+      },
+      width: chartRef.current.clientWidth,
+      height: 400,
+    });
 
-    if (pdh !== undefined) {
-      datasets.push({
-        label: 'PDH',
-        data: closes.map(() => pdh),
-        borderWidth: 1,
-        borderDash: [4, 4],
-        pointRadius: 0,
-      });
+    chartInstanceRef.current = chart;
+
+    // Add candlestick series
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#00ff99',
+      downColor: '#ff6464',
+      borderUpColor: '#00ff99',
+      borderDownColor: '#ff6464',
+      wickUpColor: '#00ff99',
+      wickDownColor: '#ff6464',
+    });
+
+    // Format candle data
+    const formatted = candles.map((c: any, i: number) => {
+      let time: number;
+      if (typeof c.time === 'string') {
+        time = Math.floor(new Date(c.time).getTime() / 1000);
+      } else {
+        time = Math.floor(c.time / 1000);
+      }
+
+      return {
+        time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        index: i,
+      };
+    });
+
+    candleSeries.setData(formatted);
+    chart.timeScale().fitContent();
+
+    // Draw overlays if available
+    if (result?.tradePlan?.overlays) {
+      drawOverlays(chart, candleSeries, formatted, result.tradePlan.overlays);
     }
 
-    if (pdl !== undefined) {
-      datasets.push({
-        label: 'PDL',
-        data: closes.map(() => pdl),
-        borderWidth: 1,
-        borderDash: [4, 4],
-        pointRadius: 0,
-      });
-    }
-
-    if (isNBB && oteFrom !== undefined && oteTo !== undefined) {
-      datasets.push(
-        {
-          label: 'OTE Lower',
-          data: closes.map(() => Math.min(oteFrom, oteTo)),
-          borderWidth: 1,
-          borderDash: [6, 3],
-          pointRadius: 0,
-        },
-        {
-          label: 'OTE Upper',
-          data: closes.map(() => Math.max(oteFrom, oteTo)),
-          borderWidth: 1,
-          borderDash: [6, 3],
-          pointRadius: 0,
-        }
-      );
-    }
-
-    return {
-      labels,
-      datasets,
+    // Handle resize
+    const handleResize = () => {
+      if (chartRef.current) {
+        chart.applyOptions({
+          width: chartRef.current.clientWidth,
+        });
+      }
     };
-  }, [candles, pdh, pdl, isNBB, oteFrom, oteTo]);
 
-  if (!chartData) {
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+      chartInstanceRef.current = null;
+    };
+  }, [candles, result]);
+
+  if (candles.length === 0) {
     return (
       <div className="p-4 bg-[#11131a] rounded h-full">
         <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
@@ -101,32 +103,7 @@ export default function Chart() {
           {instrument} · {timeframe} · {candles.length} candles
         </span>
       </div>
-      <Line
-        data={chartData}
-        options={{
-          responsive: true,
-          plugins: {
-            annotation: {
-              annotations: generateAnnotations(plan, candles),
-            },
-            legend: {
-              labels: {
-                color: '#e5e7eb',
-              },
-            },
-          },
-          scales: {
-            x: {
-              ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: true },
-              grid: { color: '#111827' },
-            },
-            y: {
-              ticks: { color: '#9ca3af' },
-              grid: { color: '#111827' },
-            },
-          },
-        }}
-      />
+      <div ref={chartRef} className="w-full h-[400px]" />
     </div>
   );
 }
