@@ -1,4 +1,4 @@
-import { MarketContext } from '@types/context';
+import { MarketContext } from '@custom-types/context';
 import { detectTrend } from '@detectors/trend';
 import { detectLiquidity } from '@detectors/liquidity';
 import { detectSession } from '@detectors/session';

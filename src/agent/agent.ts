@@ -1,5 +1,5 @@
-import { MarketData } from '@types/market';
-import { ClassifierResult } from '@types/playbook';
+import { MarketData } from '@custom-types/market';
+import { ClassifierResult } from '@custom-types/playbook';
 import { classifyMarket } from '@agent/classifier';
 import { logger } from '@utils/logger';
 

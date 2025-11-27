@@ -36,6 +36,26 @@ export interface MarketContext {
   // OTE (Optimal Trade Entry)
   oteRetrace: boolean; // did price retrace to OTE level?
   oteLevel: number | null; // 0.62, 0.705, 0.79 Fib level
+
+  // Trendline
+  trendline: {
+    exists: boolean;
+    touches: number;
+    respected: boolean;
+  };
+
+  // Balance Zones
+  balanceZones: {
+    inBalance: boolean;
+    lvnDetected: boolean;
+  };
+
+  // Volatility
+  volatility: 'high' | 'low';
+
+  // Previous Day Levels
+  previousDayHigh: number;
+  previousDayLow: number;
 }
 
 // New: Action / Signal / Playbook Profile

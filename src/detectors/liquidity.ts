@@ -1,4 +1,4 @@
-import { LiquidityDetectorOutput } from '@types/detector';
+import { LiquidityDetectorOutput } from '@custom-types/detector';
 import { logger } from '@utils/logger';
 
 /**

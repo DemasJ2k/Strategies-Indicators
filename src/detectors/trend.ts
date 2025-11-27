@@ -1,4 +1,4 @@
-import { TrendDetectorOutput } from '@types/detector';
+import { TrendDetectorOutput } from '@custom-types/detector';
 import { logger } from '@utils/logger';
 
 /**

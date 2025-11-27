@@ -1,4 +1,4 @@
-import { SessionInfo } from '@types/detector';
+import { SessionInfo } from '@custom-types/detector';
 import { logger } from '@utils/logger';
 
 /**

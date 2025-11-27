@@ -1,4 +1,4 @@
-import { VolumeProfile } from '@types/detector';
+import { VolumeProfile } from '@custom-types/detector';
 import { logger } from '@utils/logger';
 
 /**

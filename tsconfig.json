@@ -19,7 +19,7 @@
       "@agent/*": ["src/agent/*"],
       "@playbooks/*": ["src/playbooks/*"],
       "@detectors/*": ["src/detectors/*"],
-      "@types/*": ["src/types/*"],
+      "@custom-types/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"]
     }
   },
