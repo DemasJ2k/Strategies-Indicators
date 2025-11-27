@@ -10,8 +10,14 @@ export default function Chart() {
   const timeframe = useAgentStore((s) => s.timeframe);
 
   const context = result?.context;
+  const plan = result?.tradePlan;
+
   const pdh = context?.pdh;
   const pdl = context?.pdl;
+
+  const isNBB = plan?.playbook === 'NBB';
+  const oteFrom = plan?.entry?.zone?.from;
+  const oteTo = plan?.entry?.zone?.to;
 
   const chartData = useMemo(() => {
     if (!candles || candles.length === 0) {
@@ -52,17 +58,36 @@ export default function Chart() {
       });
     }
 
+    if (isNBB && oteFrom !== undefined && oteTo !== undefined) {
+      datasets.push(
+        {
+          label: 'OTE Lower',
+          data: closes.map(() => Math.min(oteFrom, oteTo)),
+          borderWidth: 1,
+          borderDash: [6, 3],
+          pointRadius: 0,
+        },
+        {
+          label: 'OTE Upper',
+          data: closes.map(() => Math.max(oteFrom, oteTo)),
+          borderWidth: 1,
+          borderDash: [6, 3],
+          pointRadius: 0,
+        }
+      );
+    }
+
     return {
       labels,
       datasets,
     };
-  }, [candles, pdh, pdl]);
+  }, [candles, pdh, pdl, isNBB, oteFrom, oteTo]);
 
   if (!chartData) {
     return (
       <div className="p-4 bg-[#11131a] rounded h-full">
         <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
-        <p>No candles loaded yet.</p>
+        <p className="text-sm text-gray-400">No candles loaded yet.</p>
       </div>
     );
   }
