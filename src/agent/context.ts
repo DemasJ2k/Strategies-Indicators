@@ -4,6 +4,7 @@ import { detectLiquidity } from '@detectors/liquidity';
 import { detectSession } from '@detectors/session';
 import { detectVolume } from '@detectors/volume';
 import { detectTrendline } from '@detectors/trendline';
+import { detectMMM, detectBreakerBlock, detectPO3Zone, detectOTELevel } from '@detectors/nbb';
 import { logger } from '@utils/logger';
 
 /**
@@ -78,6 +79,24 @@ export function buildMarketContext(rawData: RawMarketData): MarketContext {
   const trendlineResult = detectTrendline(rawData.candles, trendResult.htfTrend);
 
   // ─────────────────────────────────────────────────────────────
+  // NBB-Specific Detectors
+  // ─────────────────────────────────────────────────────────────
+
+  logger.info('\nRunning NBB-specific detectors...\n');
+
+  // 6. Detect Market Maker Model (MMM)
+  const mmmResult = detectMMM(rawData.candles);
+
+  // 7. Detect Breaker Blocks
+  const breakerResult = detectBreakerBlock(rawData.candles);
+
+  // 8. Detect PO3 Zones (Premium/Discount)
+  const po3Result = detectPO3Zone(rawData.candles, trendResult.htfTrend);
+
+  // 9. Detect OTE Levels
+  const oteResult = detectOTELevel(rawData.candles, trendResult.htfTrend);
+
+  // ─────────────────────────────────────────────────────────────
   // Build MarketContext from detector results
   // ─────────────────────────────────────────────────────────────
 
@@ -87,9 +106,11 @@ export function buildMarketContext(rawData: RawMarketData): MarketContext {
   const liquiditySweep = liquidityResult.swept.length > 0;
   const sweptDirection = liquiditySweep ? liquidityResult.swept[0].direction : null;
 
-  // Determine if structure break occurred (simplified - based on recent price action)
-  const structureBreak = volumeResult.spike && volumeResult.displacement;
-  const breakDirection = structureBreak
+  // Determine if structure break occurred - use breaker block detection
+  const structureBreak = breakerResult.exists || (volumeResult.spike && volumeResult.displacement);
+  const breakDirection = breakerResult.exists
+    ? breakerResult.type
+    : structureBreak
     ? trendResult.htfTrend === 'bullish'
       ? 'bullish'
       : trendResult.htfTrend === 'bearish'
@@ -97,13 +118,13 @@ export function buildMarketContext(rawData: RawMarketData): MarketContext {
       : null
     : null;
 
-  // Determine if price is at PO3 zone (simplified)
-  const po3ZonePresent = trendResult.htfTrend !== 'neutral';
-  const priceAtPO3 = po3ZonePresent; // Simplified - in real impl, calculate actual zones
+  // Use real PO3 zone detection
+  const po3ZonePresent = po3Result.exists;
+  const priceAtPO3 = po3Result.inPremium || po3Result.inDiscount;
 
-  // Determine OTE retrace (simplified - use 0.705 as default optimal level)
-  const oteRetrace = po3ZonePresent && liquiditySweep;
-  const oteLevel = oteRetrace ? 0.705 : null;
+  // Use real OTE level detection
+  const oteRetrace = oteResult.available;
+  const oteLevel = oteResult.level;
 
   // Build liquidity zones array
   const liquidityZones = [
@@ -178,14 +199,25 @@ export function buildMarketContext(rawData: RawMarketData): MarketContext {
   };
 
   logger.success('✓ MarketContext built successfully\n');
-  logger.info('Context Summary:');
+  logger.info('════════════════════════════════════════════');
+  logger.info('📊 CONTEXT SUMMARY');
+  logger.info('════════════════════════════════════════════');
   logger.info(`  HTF Trend: ${context.htfTrend.toUpperCase()}`);
   logger.info(`  Session: ${context.session.toUpperCase()}`);
   logger.info(`  Price: ${context.price}`);
+  logger.info('  ────────────────────────────────────────');
   logger.info(`  Volume Spike: ${context.volumeSpike ? 'YES' : 'NO'}`);
-  logger.info(`  Liquidity Sweep: ${context.liquiditySweep ? 'YES' : 'NO'}`);
-  logger.info(`  Structure Break: ${context.structureBreak ? 'YES' : 'NO'}`);
-  logger.info(`  Trendline: ${context.trendline.exists ? `${context.trendline.touches} touches` : 'NONE'}\n`);
+  logger.info(`  Displacement: ${context.displacement ? 'YES' : 'NO'}`);
+  logger.info(`  Liquidity Sweep: ${context.liquiditySweep ? 'YES (' + context.sweptDirection + ')' : 'NO'}`);
+  logger.info(`  Structure Break: ${context.structureBreak ? 'YES (' + context.breakDirection + ')' : 'NO'}`);
+  logger.info('  ────────────────────────────────────────');
+  logger.info(`  MMM Phase: ${mmmResult.phase.toUpperCase()}`);
+  logger.info(`  Breaker Block: ${breakerResult.exists ? 'YES (' + breakerResult.type + ')' : 'NO'}`);
+  logger.info(`  PO3 Zone: ${po3Result.exists ? (po3Result.inPremium ? 'PREMIUM' : 'DISCOUNT') : 'NONE'}`);
+  logger.info(`  OTE Level: ${oteResult.available ? oteResult.level : 'NOT AVAILABLE'}`);
+  logger.info('  ────────────────────────────────────────');
+  logger.info(`  Trendline: ${context.trendline.exists ? `${context.trendline.touches} touches` : 'NONE'}`);
+  logger.info('════════════════════════════════════════════\n');
 
   return context;
 }
