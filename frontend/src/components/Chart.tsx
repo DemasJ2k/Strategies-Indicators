@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import { useAgentStore } from '../store/useAgentStore';
+import { generateAnnotations } from '../lib/chartOverlays';
 import 'chart.js/auto';
 
 export default function Chart() {
@@ -105,6 +106,9 @@ export default function Chart() {
         options={{
           responsive: true,
           plugins: {
+            annotation: {
+              annotations: generateAnnotations(plan, candles),
+            },
             legend: {
               labels: {
                 color: '#e5e7eb',
