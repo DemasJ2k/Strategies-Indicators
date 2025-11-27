@@ -1,5 +1,7 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { logger } from '@utils/logger';
+// Import real session and liquidity detectors
+import { detectSessionSweep, detectFVG, detectMSS } from '@detectors/liquidity';
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -13,6 +15,16 @@ import { logger } from '@utils/logger';
  *   - FVG or MSS formation after sweep
  *   - Volatility context
  */
+
+/**
+ * Check JadeCap Playbook (Main Entry Point for Classifier)
+ * @param context - Market context from buildMarketContext()
+ * @returns PlaybookSignal or null if conditions not met
+ */
+export function checkJadeCap(context: MarketContext): PlaybookSignal | null {
+  return executeJadeCap(context);
+}
+
 export function executeJadeCap(context: MarketContext): PlaybookSignal | null {
   logger.info('  ┌─────────────────────────────────────────┐');
   logger.info('  │  JADECAP LIQUIDITY MODEL - VALIDATION   │');

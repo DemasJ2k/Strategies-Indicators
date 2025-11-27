@@ -1,5 +1,7 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { logger } from '@utils/logger';
+// Import real auction detectors
+import { detectBalanceZone, detectAuctionTransition, detectImbalance } from '@detectors/auction';
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -13,6 +15,16 @@ import { logger } from '@utils/logger';
  *   - Footprint aggression
  *   - Orderflow confirmation or rejection
  */
+
+/**
+ * Check Fabio Playbook (Main Entry Point for Classifier)
+ * @param context - Market context from buildMarketContext()
+ * @returns PlaybookSignal or null if conditions not met
+ */
+export function checkFabio(context: MarketContext): PlaybookSignal | null {
+  return executeFabio(context);
+}
+
 export function executeFabio(context: MarketContext): PlaybookSignal | null {
   logger.info('  ┌─────────────────────────────────────────┐');
   logger.info('  │  FABIO AUCTION MARKET - VALIDATION      │');

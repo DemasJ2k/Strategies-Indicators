@@ -1,5 +1,11 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { logger } from '@utils/logger';
+// Import real trendline detectors
+import {
+  detectAscendingTrendline,
+  detectDescendingTrendline,
+  isTrendlineRespected,
+} from '@detectors/trendline';
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -13,6 +19,16 @@ import { logger } from '@utils/logger';
  *   - Clean structure (no heavy imbalance below/above)
  *   - Session timing
  */
+
+/**
+ * Check Tori Playbook (Main Entry Point for Classifier)
+ * @param context - Market context from buildMarketContext()
+ * @returns PlaybookSignal or null if conditions not met
+ */
+export function checkTori(context: MarketContext): PlaybookSignal | null {
+  return executeTori(context);
+}
+
 export function executeTori(context: MarketContext): PlaybookSignal | null {
   logger.info('  ┌─────────────────────────────────────────┐');
   logger.info('  │  TORI TRENDLINE PLAYBOOK - VALIDATION   │');

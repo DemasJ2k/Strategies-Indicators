@@ -1,5 +1,8 @@
 import { MarketContext, PlaybookSignal } from '@custom-types/context';
 import { logger } from '@utils/logger';
+// Import real detectors (for additional validation if needed)
+import { detectFVG, detectMSS, detectSwingHighsLows } from '@detectors/liquidity';
+import { detectMarketStructureShift, detectOrderBlocks } from '@detectors/structure';
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -18,6 +21,16 @@ import { logger } from '@utils/logger';
  *   - Session Filter
  *   - ADR validation (optional)
  */
+
+/**
+ * Check NBB Playbook (Main Entry Point for Classifier)
+ * @param context - Market context from buildMarketContext()
+ * @returns PlaybookSignal or null if conditions not met
+ */
+export function checkNBB(context: MarketContext): PlaybookSignal | null {
+  return executeNBB(context);
+}
+
 export function executeNBB(context: MarketContext): PlaybookSignal | null {
   logger.info('  ┌─────────────────────────────────────────┐');
   logger.info('  │  NBB PLAYBOOK MODULE - FULL VALIDATION  │');
