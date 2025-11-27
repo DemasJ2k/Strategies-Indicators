@@ -17,6 +17,7 @@ export default function CandleUploader() {
   const setExecutionCandles = useAgentStore((s) => s.setExecutionCandles);
   const htfCandles = useAgentStore((s) => s.htfCandles);
   const candles4H = useAgentStore((s) => s.candles4H);
+  const settings = useAgentStore((s) => s.settings);
 
   async function sendRequest() {
     let candles;
@@ -32,6 +33,7 @@ export default function CandleUploader() {
       timeframe,
       symbol,
       candles,
+      overrideConfig: settings,
     };
 
     if (pdh) payload.pdh = Number(pdh);

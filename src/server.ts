@@ -39,6 +39,9 @@ app.post('/analyze', async (req: Request, res: Response) => {
 
     const last = candles[candles.length - 1];
 
+    // Extract override config if provided
+    const overrideConfig = body.overrideConfig;
+
     // Build RawMarketData with multi-timeframe support
     const raw: RawMarketData = {
       instrument: body.instrument,
@@ -63,6 +66,9 @@ app.post('/analyze', async (req: Request, res: Response) => {
       // Additional context
       adrPct: body.adrPct ?? 1.0,
       volumeProfile: body.volumeProfile ?? null,
+
+      // Override configuration from UI settings
+      overrideConfig: overrideConfig ?? null,
     };
 
     // Build market context (runs all detectors)

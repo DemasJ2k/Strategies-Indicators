@@ -7,6 +7,7 @@ export default function ReplayController() {
   const instrument = useAgentStore((s) => s.instrument);
   const timeframe = useAgentStore((s) => s.timeframe);
   const setResult = useAgentStore((s) => s.setResult);
+  const settings = useAgentStore((s) => s.settings);
 
   const [index, setIndex] = useState(50);
   const [playing, setPlaying] = useState(false);
@@ -21,6 +22,7 @@ export default function ReplayController() {
       instrument,
       timeframe,
       candles: slice,
+      overrideConfig: settings,
     });
 
     setIndex(i);

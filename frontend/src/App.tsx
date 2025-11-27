@@ -6,6 +6,7 @@ import PlaybookScores from './components/PlaybookScores';
 import TradePlanView from './components/TradePlanView';
 import Chart from './components/Chart';
 import PlaybookDetail from './components/PlaybookDetail';
+import SettingsPanel from './components/SettingsPanel';
 
 export default function App() {
   return (
@@ -31,6 +32,8 @@ export default function App() {
         <PlaybookDetail />
         <TradePlanView />
       </div>
+
+      <SettingsPanel />
     </div>
   );
 }

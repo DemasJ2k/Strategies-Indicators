@@ -10,6 +10,19 @@ export interface Candle {
   volume?: number;
 }
 
+interface PlaybookSettings {
+  NBB: { enabled: boolean; adrMaxPct: number };
+  TORI: { enabled: boolean; minTouches: number };
+  FABIO: { enabled: boolean; imbalanceThreshold: number };
+  JADE: { enabled: boolean; intradayStartHour: number; intradayEndHour: number };
+}
+
+interface RiskSettings {
+  riskPercent: number;
+  maxDailyTrades: number;
+  rrTargets: number[];
+}
+
 interface AgentState {
   result: AnalyzeResponse | null;
 
@@ -25,10 +38,16 @@ interface AgentState {
   instrument: string;
   timeframe: string;
 
+  settings: PlaybookSettings;
+  risk: RiskSettings;
+
   setResult: (r: AnalyzeResponse | null) => void;
   setExecutionCandles: (c: Candle[], instrument: string, timeframe: string) => void;
   setHTFCandles: (c: Candle[]) => void;
   setCandles4H: (c: Candle[]) => void;
+
+  setSettings: (s: Partial<PlaybookSettings>) => void;
+  setRisk: (r: Partial<RiskSettings>) => void;
 }
 
 export const useAgentStore = create<AgentState>((set) => ({
@@ -39,9 +58,28 @@ export const useAgentStore = create<AgentState>((set) => ({
   instrument: 'FOREX',
   timeframe: '15m',
 
+  settings: {
+    NBB: { enabled: true, adrMaxPct: 1.2 },
+    TORI: { enabled: true, minTouches: 2 },
+    FABIO: { enabled: true, imbalanceThreshold: 0.002 },
+    JADE: { enabled: true, intradayStartHour: 9, intradayEndHour: 11 },
+  },
+
+  risk: {
+    riskPercent: 1,
+    maxDailyTrades: 3,
+    rrTargets: [1, 2, 4],
+  },
+
   setResult: (r) => set({ result: r }),
   setExecutionCandles: (candles, instrument, timeframe) =>
     set({ candles, instrument, timeframe }),
   setHTFCandles: (htfCandles) => set({ htfCandles }),
   setCandles4H: (candles4H) => set({ candles4H }),
+
+  setSettings: (s) =>
+    set((state) => ({ settings: { ...state.settings, ...s } })),
+
+  setRisk: (r) =>
+    set((state) => ({ risk: { ...state.risk, ...r } })),
 }));
