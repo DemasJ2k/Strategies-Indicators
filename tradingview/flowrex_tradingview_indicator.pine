@@ -1,0 +1,75 @@
+// @version=5
+indicator("Flowrex Streamer (Webhook Bridge)", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// === INPUTS ===
+sendOnEveryBar = input.bool(true, "Send alert every new bar?", group="Webhook Settings")
+sendOnEveryTick = input.bool(false, "Send alert on every tick (high frequency!)", group="Webhook Settings")
+
+candlesToSend = input.int(120, "Candles to include in JSON", minval=10, maxval=500)
+instrumentType = input.string("FOREX", "Instrument Type", options=["FOREX","CRYPTO","FUTURES","CFD"], group="Metadata")
+
+// === INTERNAL ===
+var float[] o = array.new_float()
+var float[] h = array.new_float()
+var float[] l = array.new_float()
+var float[] c = array.new_float()
+var int[]   t = array.new_int()
+var float[] v = array.new_float()
+
+// === COLLECT CANDLES INTO ARRAYS ===
+if barstate.isfirst
+    array.clear(o)
+    array.clear(h)
+    array.clear(l)
+    array.clear(c)
+    array.clear(v)
+    array.clear(t)
+
+array.push(o, open)
+array.push(h, high)
+array.push(l, low)
+array.push(c, close)
+array.push(v, volume)
+array.push(t, time / 1000) // convert ms → seconds
+
+// limit candle history
+if array.size(o) > candlesToSend
+    array.shift(o)
+    array.shift(h)
+    array.shift(l)
+    array.shift(c)
+    array.shift(v)
+    array.shift(t)
+
+// === BUILD JSON PAYLOAD ===
+f_build_json() =>
+    string json = "{"
+    json += '"symbol":"' + syminfo.ticker + '",'
+    json += '"instrument":"' + instrumentType + '",'
+    json += '"timeframe":"' + timeframe.period + '",'
+    json += '"candles":['
+
+    int sz = array.size(o)
+    for i = 0 to sz - 1
+        json += "{"
+        json += '"time":' + str.tostring(array.get(t, i)) + ","
+        json += '"open":' + str.tostring(array.get(o, i)) + ","
+        json += '"high":' + str.tostring(array.get(h, i)) + ","
+        json += '"low":' + str.tostring(array.get(l, i)) + ","
+        json += '"close":' + str.tostring(array.get(c, i)) + ","
+        json += '"volume":' + str.tostring(array.get(v, i))
+        json += "}"
+        if i < sz - 1
+            json += ","
+    json += "]"
+    json += "}"
+
+    json
+
+// === SEND ALERT ===
+shouldSend =
+    (sendOnEveryBar and barstate.isconfirmed) or
+    (sendOnEveryTick and barstate.ishistory == false)
+
+if shouldSend
+    alert(f_build_json(), alert.freq_once_per_bar)

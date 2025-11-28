@@ -16,6 +16,23 @@ export default function LiveListener() {
       console.log('🔌 Live socket connected:', socket.id);
     });
 
+    socket.on('liveCandleBatch', (msg: any) => {
+      console.log('📦 Live candle batch received:', msg);
+      const { candles, symbol, timeframe, instrument } = msg;
+      if (candles && candles.length) {
+        setExecutionCandles(
+          candles,
+          instrument || 'FOREX',
+          timeframe || '15m'
+        );
+      }
+    });
+
+    socket.on('liveCandle', (msg: any) => {
+      // Individual candle updates - liveAnalysis also carries full candles array
+      console.log('📡 Live candle:', msg);
+    });
+
     socket.on('liveAnalysis', (msg: any) => {
       console.log('📡 Live analysis received:', msg);
 

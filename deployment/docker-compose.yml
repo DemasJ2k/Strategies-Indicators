@@ -1,0 +1,79 @@
+# ═══════════════════════════════════════════════════════════════
+# Flowrex Docker Compose - Production Stack
+# ═══════════════════════════════════════════════════════════════
+# Three-service architecture: PostgreSQL + Backend + Frontend
+
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: flowrex_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowrex
+      POSTGRES_PASSWORD: flowrex_password
+      POSTGRES_DB: flowrex_db
+    volumes:
+      - flowrex_pgdata:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - flowrex_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowrex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Service (Node/Express/Socket.IO)
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    container_name: flowrex_backend
+    restart: unless-stopped
+    env_file:
+      - ./production.env
+    environment:
+      # Override DATABASE_URL to point to postgres service
+      DATABASE_URL: postgres://flowrex:flowrex_password@postgres:5432/flowrex_db
+      NODE_ENV: production
+      PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flowrex_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Frontend Service (React + Nginx)
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    container_name: flowrex_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - flowrex_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  flowrex_net:
+    driver: bridge
+
+volumes:
+  flowrex_pgdata:
+    driver: local

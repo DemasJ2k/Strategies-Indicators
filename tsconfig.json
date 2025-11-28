@@ -24,8 +24,11 @@
       "@config/*": ["src/config/*"],
       "@loaders/*": ["src/loaders/*"],
       "@data-sources/*": ["src/data_sources/*"],
+      "@data-providers/*": ["src/data-providers/*"],
+      "@portfolio/*": ["src/portfolio/*"],
       "@sim/*": ["src/sim/*"],
-      "@runners/*": ["src/runners/*"]
+      "@runners/*": ["src/runners/*"],
+      "@signals/*": ["src/signals/*"]
     }
   },
   "include": ["src/**/*", "index.ts"],
