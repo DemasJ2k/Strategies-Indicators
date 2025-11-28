@@ -60,13 +60,14 @@ deployment/
 ├── README.md                   # This file
 ├── RAILWAY.md                  # Railway deployment guide
 ├── VPS.md                      # VPS deployment guide
-├── nginx.conf                  # Nginx reverse proxy config
+├── Dockerfile.backend          # Backend Node/TS container
+├── Dockerfile.frontend         # Frontend React + Nginx container
+├── nginx.frontend.conf         # Frontend nginx config with API proxy
+├── docker-compose.yml          # 3-service orchestration (postgres + backend + frontend)
 ├── healthcheck.sh              # Health monitoring script
 └── production.env.template     # Production environment template
 
-Dockerfile                      # Multi-stage production build
-docker-compose.yml             # Local/staging orchestration
-.dockerignore                  # Docker build optimization
+.dockerignore                   # Docker build optimization
 ```
 
 ## 🔧 Pre-Deployment Checklist
@@ -88,36 +89,41 @@ Perfect for testing before production deployment.
 
 ```bash
 # 1. Copy environment template
-cp deployment/production.env.template .env
+cp deployment/production.env.template deployment/production.env
 
-# 2. Edit .env and fill in required values
-nano .env
+# 2. Edit production.env and fill in required values
+nano deployment/production.env
 
 # 3. Generate secrets
-echo "JWT_SECRET=$(openssl rand -base64 64)" >> .env
-echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+echo "JWT_SECRET=$(openssl rand -base64 64)" >> deployment/production.env
+echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> deployment/production.env
 
-# 4. Start services
+# 4. Start services (postgres + backend + frontend)
+cd deployment
 docker-compose up -d
 
-# 5. Initialize database
-docker-compose exec -T postgres psql -U flowrex -d flowrex < db/schema.sql
-
-# 6. Check status
+# 5. Check status
 docker-compose ps
 
-# 7. View logs
-docker-compose logs -f app
+# 6. View logs
+docker-compose logs -f backend
 
-# 8. Test
-curl http://localhost:4000/health
+# 7. Test backend health
+./healthcheck.sh
+
+# Or test manually
+curl http://localhost:4000/health  # Backend
+curl http://localhost:8080/health  # Frontend
 ```
 
 ### Access Flowrex
 
-- **Frontend**: http://localhost:4000
-- **API**: http://localhost:4000/api
-- **Health Check**: http://localhost:4000/health
+- **Frontend**: http://localhost:8080
+- **Backend API**: http://localhost:8080/api (proxied through nginx)
+- **Direct Backend**: http://localhost:4000 (internal, not exposed)
+- **Health Checks**:
+  - Backend: http://localhost:4000/health
+  - Frontend: http://localhost:8080/health
 
 ### Stop Services
 
@@ -131,10 +137,13 @@ docker-compose down
 # All services
 docker-compose logs -f
 
-# Just app
-docker-compose logs -f app
+# Backend only
+docker-compose logs -f backend
 
-# Just database
+# Frontend only
+docker-compose logs -f frontend
+
+# Database only
 docker-compose logs -f postgres
 ```
 
@@ -194,12 +203,14 @@ railway logs
 
 **Docker Compose:**
 ```bash
-docker-compose logs -f app
+docker-compose logs -f backend
+docker-compose logs -f frontend
 ```
 
 **VPS:**
 ```bash
-docker-compose logs -f app
+docker-compose logs -f backend
+docker-compose logs -f frontend
 journalctl -u flowrex -f
 ```
 
@@ -295,17 +306,30 @@ certbot --nginx -d yourdomain.com
 
 ## 🐛 Troubleshooting
 
-### App Won't Start
+### Backend Won't Start
 
 ```bash
 # Check logs
-docker-compose logs app
+docker-compose logs backend
 
 # Check environment
-docker-compose exec app env | grep -i key
+docker-compose exec backend env | grep -i key
 
 # Restart
-docker-compose restart app
+docker-compose restart backend
+```
+
+### Frontend Won't Load
+
+```bash
+# Check logs
+docker-compose logs frontend
+
+# Check nginx config
+docker-compose exec frontend nginx -t
+
+# Restart
+docker-compose restart frontend
 ```
 
 ### Database Connection Errors
@@ -351,13 +375,22 @@ postgres:
     -c effective_cache_size=1GB
 ```
 
-### App Scaling
+### Backend Scaling
 
-Run multiple instances:
+Run multiple backend instances:
 ```yaml
-app:
+backend:
   deploy:
     replicas: 3
+```
+
+### Frontend Scaling
+
+Run multiple frontend instances:
+```yaml
+frontend:
+  deploy:
+    replicas: 2
 ```
 
 ### Caching
