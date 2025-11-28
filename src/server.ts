@@ -27,6 +27,16 @@ function genId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 }
 
+// Helper to validate webhook secrets
+function validateWebhookSecret(req: Request, expectedSecret: string | undefined): boolean {
+  if (!expectedSecret) {
+    // If no secret configured, allow request (dev mode)
+    return true;
+  }
+  const providedSecret = req.header('x-flowrex-secret');
+  return providedSecret === expectedSecret;
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   logger.info(`🔌 Client connected: ${socket.id}`);
@@ -120,6 +130,12 @@ app.post('/analyze', async (req: Request, res: Response) => {
  */
 app.post('/webhook/tradingview', async (req: Request, res: Response) => {
   try {
+    // Validate secret
+    if (!validateWebhookSecret(req, process.env.TV_WEBHOOK_SECRET)) {
+      logger.warn('Unauthorized TradingView webhook attempt');
+      return res.status(403).json({ error: 'Forbidden - Invalid secret' });
+    }
+
     const body = req.body;
     const result = await runAnalysisFromBody(body, '/webhook/tradingview');
 
@@ -150,6 +166,12 @@ app.post('/webhook/tradingview', async (req: Request, res: Response) => {
  */
 app.post('/webhook/mt5', async (req: Request, res: Response) => {
   try {
+    // Validate secret
+    if (!validateWebhookSecret(req, process.env.MT5_WEBHOOK_SECRET)) {
+      logger.warn('Unauthorized MT5 webhook attempt');
+      return res.status(403).json({ error: 'Forbidden - Invalid secret' });
+    }
+
     const body = req.body;
     const result = await runAnalysisFromBody(body, '/webhook/mt5');
 
