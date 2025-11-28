@@ -2,6 +2,7 @@ import { buildMarketContext, RawMarketData } from '@agent/context';
 import { classifyMarket } from '@agent/classifier';
 import { buildSignal } from '@signals/signalEngine';
 import { createLogger } from '@utils/agent_logger';
+import { saveSignal } from './journal/journalService';
 
 const logger = createLogger('AnalysisHelper');
 
@@ -50,6 +51,16 @@ export async function runAnalysisFromBody(body: any, routeLabel: string) {
     symbol: body.symbol,
   });
 
+  // Auto-journal the signal to database
+  let signalId: string | null = null;
+  try {
+    signalId = await saveSignal(signal, marketContext, routeLabel.replace('/', ''));
+    logger.info(`✓ Signal saved to database: ${signalId}`);
+  } catch (e) {
+    logger.error('Error saving signal to database:', e);
+    // Continue even if DB save fails
+  }
+
   const result = {
     id: genId(routeLabel),
     timestamp: new Date().toISOString(),
@@ -58,6 +69,7 @@ export async function runAnalysisFromBody(body: any, routeLabel: string) {
     context: marketContext,
     classification,
     signal, // ⚡ Unified Flowrex signal
+    signalId, // Database signal ID for linking trades
     tradePlan: {
       playbook: classification.signal?.playbookName || 'NONE',
       direction: classification.signal?.direction || 'NONE',

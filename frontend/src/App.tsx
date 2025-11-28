@@ -14,6 +14,7 @@ import DebugPanel from './components/DebugPanel';
 import SignalCard from './components/SignalCard';
 import LiveMarketPanel from './components/LiveMarketPanel';
 import PortfolioRadar from './components/PortfolioRadar';
+import JournalPanel from './components/JournalPanel';
 import { useAgentStore } from './store/useAgentStore';
 
 export default function App() {
@@ -60,7 +61,10 @@ export default function App() {
         <DebugPanel />
       </div>
 
-      <PortfolioRadar />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PortfolioRadar />
+        <JournalPanel />
+      </div>
     </div>
   );
 }

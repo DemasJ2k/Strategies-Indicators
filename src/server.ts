@@ -9,6 +9,7 @@ import { startLiveStream, stopLiveStream } from './live/liveRouter';
 import { computeExposure } from '@portfolio/exposure';
 import { computeCorrelationMatrix } from '@portfolio/correlation';
 import { computeBasketRisk } from '@portfolio/riskEngine';
+import { createTrade, closeTrade, listRecentTrades } from './journal/journalService';
 
 const logger = createLogger('Server');
 const app = express();
@@ -259,6 +260,58 @@ app.post('/portfolio/radar', async (req: Request, res: Response) => {
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * POST /journal/trades
+ * ═══════════════════════════════════════════════════════════════
+ * Create a new trade journal entry
+ */
+app.post('/journal/trades', async (req: Request, res: Response) => {
+  try {
+    const trade = await createTrade(req.body);
+    logger.info(`✓ Trade created: ${trade.id} - ${trade.symbol} ${trade.direction}`);
+    res.json(trade);
+  } catch (err: any) {
+    logger.error('Error creating trade:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * POST /journal/trades/:id/close
+ * ═══════════════════════════════════════════════════════════════
+ * Close an existing trade with exit price and time
+ */
+app.post('/journal/trades/:id/close', async (req: Request, res: Response) => {
+  try {
+    const { exitPrice, exitTime } = req.body;
+    const trade = await closeTrade(req.params.id, exitPrice, exitTime);
+    logger.info(`✓ Trade closed: ${trade.id} - PnL: ${trade.pnl}`);
+    res.json(trade);
+  } catch (err: any) {
+    logger.error('Error closing trade:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * GET /journal/trades
+ * ═══════════════════════════════════════════════════════════════
+ * List recent trades with optional limit
+ */
+app.get('/journal/trades', async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 50);
+    const trades = await listRecentTrades(limit);
+    res.json(trades);
+  } catch (err: any) {
+    logger.error('Error listing trades:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * GET /health
  * ═══════════════════════════════════════════════════════════════
  * Health check endpoint
@@ -288,6 +341,9 @@ httpServer.listen(PORT, () => {
   logger.info(`   POST http://localhost:${PORT}/data/live/start`);
   logger.info(`   POST http://localhost:${PORT}/data/live/stop`);
   logger.info(`   POST http://localhost:${PORT}/portfolio/radar`);
+  logger.info(`   POST http://localhost:${PORT}/journal/trades`);
+  logger.info(`   POST http://localhost:${PORT}/journal/trades/:id/close`);
+  logger.info(`   GET  http://localhost:${PORT}/journal/trades`);
   logger.info(`   GET  http://localhost:${PORT}/health`);
   logger.info(`\n🔌 WebSocket: Socket.IO ready for live updates\n`);
 });
