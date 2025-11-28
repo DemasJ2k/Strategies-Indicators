@@ -12,6 +12,7 @@ import PlaybookDetail from './components/PlaybookDetail';
 import SettingsPanel from './components/SettingsPanel';
 import DebugPanel from './components/DebugPanel';
 import SignalCard from './components/SignalCard';
+import LiveMarketPanel from './components/LiveMarketPanel';
 import { useAgentStore } from './store/useAgentStore';
 
 export default function App() {
@@ -28,6 +29,8 @@ export default function App() {
       </p>
 
       <ErrorBanner />
+
+      <LiveMarketPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CandleUploader />

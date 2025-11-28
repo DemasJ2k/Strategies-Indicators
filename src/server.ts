@@ -2,11 +2,10 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Server as SocketIOServer } from 'socket.io';
-import { buildMarketContext, RawMarketData } from '@agent/context';
-import { classifyMarket } from '@agent/classifier';
-import { buildSignal } from '@signals/signalEngine';
 import { getProvider } from '@data-providers/index';
 import { createLogger } from '@utils/agent_logger';
+import { runAnalysisFromBody } from './server-analysis-helper';
+import { startLiveStream, stopLiveStream } from './live/liveRouter';
 
 const logger = createLogger('Server');
 const app = express();
@@ -23,11 +22,6 @@ const io = new SocketIOServer(httpServer, {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-
-// Helper to generate IDs
-function genId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-}
 
 // Helper to validate webhook secrets
 function validateWebhookSecret(req: Request, expectedSecret: string | undefined): boolean {
@@ -48,71 +42,8 @@ io.on('connection', (socket) => {
   });
 });
 
-/**
- * ═══════════════════════════════════════════════════════════════
- * REUSABLE ANALYSIS HELPER
- * ═══════════════════════════════════════════════════════════════
- * Convert HTTP request body to RawMarketData and run analysis
- */
-async function runAnalysisFromBody(body: any, routeLabel: string) {
-  const candles = body.candles || [];
-
-  if (candles.length < 3) {
-    throw new Error('Not enough candles (minimum 3 required)');
-  }
-
-  // Convert to RawMarketData format
-  const rawData: RawMarketData = {
-    candles: candles.map((c: any) => ({
-      open: Number(c.open),
-      high: Number(c.high),
-      low: Number(c.low),
-      close: Number(c.close),
-      volume: Number(c.volume || 1000000),
-      time: c.time,
-    })),
-    previousDayHigh: body.pdh || candles[candles.length - 1].high,
-    previousDayLow: body.pdl || candles[candles.length - 1].low,
-  };
-
-  // Build market context (runs all detectors)
-  const marketContext = buildMarketContext(rawData);
-
-  // Classify playbook
-  const classification = classifyMarket(marketContext);
-
-  // Build unified Flowrex signal
-  const signal = buildSignal(marketContext, classification, {
-    instrument: body.instrument || 'UNKNOWN',
-    timeframe: body.timeframe || '15m',
-    symbol: body.symbol,
-  });
-
-  const result = {
-    id: genId(routeLabel),
-    timestamp: new Date().toISOString(),
-    instrument: body.instrument || 'UNKNOWN',
-    timeframe: body.timeframe || '15m',
-    context: marketContext,
-    classification,
-    signal, // ⚡ NEW: Unified Flowrex signal
-    tradePlan: {
-      playbook: classification.signal?.playbookName || 'NONE',
-      direction: classification.signal?.direction || 'NONE',
-      session: classification.signal?.session || 'UNKNOWN',
-      confidence: classification.signal?.confidence || 0,
-      context: classification.signal?.context || '',
-      tpLogic: classification.signal?.tpLogic || '',
-      overlays: {}, // Placeholder for chart overlays
-    },
-  };
-
-  logger.info(
-    `✓ Analysis complete [${routeLabel}]: ${body.instrument} ${body.timeframe} (${candles.length} candles) → ${signal.playbook} (${signal.direction.toUpperCase()} @ ${signal.confidence}% / Grade ${signal.grade})`
-  );
-
-  return result;
-}
+// Export io for use in live router
+export { io };
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -248,6 +179,49 @@ app.get('/data/ohlc', async (req: Request, res: Response) => {
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * POST /data/live/start
+ * ═══════════════════════════════════════════════════════════════
+ * Start live market data stream from a broker
+ */
+app.post('/data/live/start', async (req: Request, res: Response) => {
+  try {
+    const { provider, symbol, timeframe } = req.body;
+    if (!provider || !symbol || !timeframe) {
+      return res.status(400).json({ error: 'provider, symbol, timeframe required' });
+    }
+
+    await startLiveStream(io, { provider, symbol, timeframe });
+    logger.info(`📡 Started live stream: ${provider} ${symbol} ${timeframe}`);
+    res.json({ ok: true });
+  } catch (err: any) {
+    logger.error('Error starting live stream:', err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * POST /data/live/stop
+ * ═══════════════════════════════════════════════════════════════
+ * Stop live market data stream
+ */
+app.post('/data/live/stop', (req: Request, res: Response) => {
+  try {
+    const { provider, symbol, timeframe } = req.body;
+    if (!provider || !symbol || !timeframe) {
+      return res.status(400).json({ error: 'provider, symbol, timeframe required' });
+    }
+
+    stopLiveStream({ provider, symbol, timeframe });
+    logger.info(`⏹️  Stopped live stream: ${provider} ${symbol} ${timeframe}`);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * GET /health
  * ═══════════════════════════════════════════════════════════════
  * Health check endpoint
@@ -274,6 +248,8 @@ httpServer.listen(PORT, () => {
   logger.info(`   POST http://localhost:${PORT}/webhook/tradingview`);
   logger.info(`   POST http://localhost:${PORT}/webhook/mt5`);
   logger.info(`   GET  http://localhost:${PORT}/data/ohlc`);
+  logger.info(`   POST http://localhost:${PORT}/data/live/start`);
+  logger.info(`   POST http://localhost:${PORT}/data/live/stop`);
   logger.info(`   GET  http://localhost:${PORT}/health`);
   logger.info(`\n🔌 WebSocket: Socket.IO ready for live updates\n`);
 });
