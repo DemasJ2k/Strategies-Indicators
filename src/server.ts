@@ -10,6 +10,9 @@ import { computeExposure } from '@portfolio/exposure';
 import { computeCorrelationMatrix } from '@portfolio/correlation';
 import { computeBasketRisk } from '@portfolio/riskEngine';
 import { createTrade, closeTrade, listRecentTrades } from './journal/journalService';
+import { openai } from './ai/openaiClient';
+import { buildAssistantContext } from './assistant/contextBuilder';
+import type { PortfolioPosition } from '@portfolio/types';
 
 const logger = createLogger('Server');
 const app = express();
@@ -312,6 +315,91 @@ app.get('/journal/trades', async (req: Request, res: Response) => {
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * POST /assistant/chat
+ * ═══════════════════════════════════════════════════════════════
+ * AI Chat Assistant powered by OpenAI
+ */
+app.post('/assistant/chat', async (req: Request, res: Response) => {
+  try {
+    const {
+      message,
+      includeSignals,
+      includeTrades,
+      includePortfolio,
+      latestAnalysis,
+      portfolioPositions,
+      accountBalance,
+    } = req.body || {};
+
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+
+    // Build context from DB + optional latestAnalysis
+    const ctx = await buildAssistantContext(
+      {
+        includeSignals: !!includeSignals,
+        includeTrades: !!includeTrades,
+        includePortfolio: !!includePortfolio,
+      },
+      latestAnalysis
+    );
+
+    // Optionally compute portfolio radar on the fly
+    if (includePortfolio && Array.isArray(portfolioPositions)) {
+      const positions = portfolioPositions as PortfolioPosition[];
+      // You might want real price history here; to keep it simple we omit for now
+      const fakePriceHistory: Record<string, number[]> = {};
+      const exposures = computeExposure(positions, accountBalance || 5000);
+      const corr = computeCorrelationMatrix(positions, fakePriceHistory);
+      const basket = computeBasketRisk(positions, corr, exposures, accountBalance || 5000);
+
+      ctx.portfolioRadar = { exposures, corr, basket };
+    }
+
+    const systemPrompt = `
+You are Flowrex, an institutional-grade AI trading assistant for forex and crypto.
+
+User profile:
+- Intermediate to advanced retail trader.
+- Uses multiple playbooks (NBB, Tori, Fabio, JadeCap).
+- Wants systematic, data-driven trading with strong risk management.
+
+Capabilities:
+- Explain the latest AI signal and playbook choice.
+- Analyze risk, correlations, and exposure when portfolio data is provided.
+- Review recent journal trades and signals and highlight patterns, strengths, and weaknesses.
+- Never give broker-specific execution advice (no "click buy now"), focus on education, risk, and planning.
+- Default to conservative, professional risk management.
+
+Context JSON (do NOT dump it raw; summarize it usefully):
+${JSON.stringify(ctx).slice(0, 8000)}
+    `.trim();
+
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      temperature: 0.3,
+    });
+
+    const reply = completion.choices[0]?.message?.content || '(no reply)';
+
+    logger.info(`✓ AI assistant response generated (${reply.length} chars)`);
+
+    res.json({ reply });
+  } catch (err: any) {
+    logger.error('Error in /assistant/chat:', err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * GET /health
  * ═══════════════════════════════════════════════════════════════
  * Health check endpoint
@@ -344,6 +432,7 @@ httpServer.listen(PORT, () => {
   logger.info(`   POST http://localhost:${PORT}/journal/trades`);
   logger.info(`   POST http://localhost:${PORT}/journal/trades/:id/close`);
   logger.info(`   GET  http://localhost:${PORT}/journal/trades`);
+  logger.info(`   POST http://localhost:${PORT}/assistant/chat`);
   logger.info(`   GET  http://localhost:${PORT}/health`);
   logger.info(`\n🔌 WebSocket: Socket.IO ready for live updates\n`);
 });

@@ -15,6 +15,7 @@ import SignalCard from './components/SignalCard';
 import LiveMarketPanel from './components/LiveMarketPanel';
 import PortfolioRadar from './components/PortfolioRadar';
 import JournalPanel from './components/JournalPanel';
+import ChatAssistant from './components/ChatAssistant';
 import { useAgentStore } from './store/useAgentStore';
 
 export default function App() {
@@ -56,14 +57,16 @@ export default function App() {
         <TradePlanView />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SettingsPanel />
-        <DebugPanel />
-      </div>
+      <SettingsPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PortfolioRadar />
         <JournalPanel />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChatAssistant />
+        <DebugPanel />
       </div>
     </div>
   );
