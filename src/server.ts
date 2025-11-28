@@ -14,6 +14,12 @@ import { openai } from './ai/openaiClient';
 import { buildAssistantContext } from './assistant/contextBuilder';
 import { registerUser, loginUser } from './auth/authService';
 import { requireAuth } from './auth/middleware';
+import {
+  getUserSettings,
+  updateUserSettings,
+  findUserByMt5Secret,
+  findUserByTvSecret,
+} from './settings/userSettingsService';
 import type { PortfolioPosition } from '@portfolio/types';
 
 const logger = createLogger('Server');
@@ -141,18 +147,27 @@ app.post('/analyze', requireAuth, async (req: Request, res: Response) => {
  */
 app.post('/webhook/tradingview', async (req: Request, res: Response) => {
   try {
-    // Validate secret
-    if (!validateWebhookSecret(req, process.env.TV_WEBHOOK_SECRET)) {
-      logger.warn('Unauthorized TradingView webhook attempt');
-      return res.status(403).json({ error: 'Forbidden - Invalid secret' });
+    // Extract secret from header
+    const secret = req.header('x-flowrex-secret');
+    if (!secret) {
+      logger.warn('TradingView webhook missing secret header');
+      return res.status(403).json({ error: 'Missing x-flowrex-secret header' });
+    }
+
+    // Find user by their unique TradingView webhook secret
+    const userId = await findUserByTvSecret(secret);
+    if (!userId) {
+      logger.warn('Unknown TradingView webhook secret');
+      return res.status(403).json({ error: 'Unknown webhook secret' });
     }
 
     const body = req.body;
-    const result = await runAnalysisFromBody(body, '/webhook/tradingview');
+    const result = await runAnalysisFromBody(body, '/webhook/tradingview', userId);
 
-    // Broadcast to all connected clients
+    // Broadcast to all connected clients with userId for routing
     io.emit('liveAnalysis', {
       source: 'tradingview',
+      userId,
       symbol: body.symbol,
       instrument: body.instrument,
       timeframe: body.timeframe,
@@ -161,6 +176,7 @@ app.post('/webhook/tradingview', async (req: Request, res: Response) => {
       result,
     });
 
+    logger.info(`✓ TradingView webhook processed for user: ${userId}`);
     res.json({ ok: true, resultId: result.id });
   } catch (err: any) {
     logger.error('Error in /webhook/tradingview:', err);
@@ -178,18 +194,27 @@ app.post('/webhook/tradingview', async (req: Request, res: Response) => {
  */
 app.post('/webhook/mt5', async (req: Request, res: Response) => {
   try {
-    // Validate secret
-    if (!validateWebhookSecret(req, process.env.MT5_WEBHOOK_SECRET)) {
-      logger.warn('Unauthorized MT5 webhook attempt');
-      return res.status(403).json({ error: 'Forbidden - Invalid secret' });
+    // Extract secret from header
+    const secret = req.header('x-flowrex-secret');
+    if (!secret) {
+      logger.warn('MT5 webhook missing secret header');
+      return res.status(403).json({ error: 'Missing x-flowrex-secret header' });
+    }
+
+    // Find user by their unique MT5 webhook secret
+    const userId = await findUserByMt5Secret(secret);
+    if (!userId) {
+      logger.warn('Unknown MT5 webhook secret');
+      return res.status(403).json({ error: 'Unknown webhook secret' });
     }
 
     const body = req.body;
-    const result = await runAnalysisFromBody(body, '/webhook/mt5');
+    const result = await runAnalysisFromBody(body, '/webhook/mt5', userId);
 
-    // Broadcast to all connected clients
+    // Broadcast to all connected clients with userId for routing
     io.emit('liveAnalysis', {
       source: 'mt5',
+      userId,
       symbol: body.symbol,
       instrument: body.instrument,
       timeframe: body.timeframe,
@@ -198,6 +223,7 @@ app.post('/webhook/mt5', async (req: Request, res: Response) => {
       result,
     });
 
+    logger.info(`✓ MT5 webhook processed for user: ${userId}`);
     res.json({ ok: true, resultId: result.id });
   } catch (err: any) {
     logger.error('Error in /webhook/mt5:', err);
@@ -459,6 +485,44 @@ ${JSON.stringify(ctx).slice(0, 8000)}
   } catch (err: any) {
     logger.error('Error in /assistant/chat:', err);
     res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * GET /settings/me
+ * ═══════════════════════════════════════════════════════════════
+ * Get current user's workspace settings
+ */
+app.get('/settings/me', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const settings = await getUserSettings(userId);
+    logger.info(`✓ Settings loaded for user: ${userId}`);
+    res.json(settings);
+  } catch (err: any) {
+    logger.error('Error loading settings:', err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * PUT /settings/me
+ * ═══════════════════════════════════════════════════════════════
+ * Update current user's workspace settings
+ */
+app.put('/settings/me', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { brokerConfig, keys } = req.body;
+
+    const updated = await updateUserSettings(userId, brokerConfig || {}, keys || {});
+    logger.info(`✓ Settings updated for user: ${userId}`);
+    res.json(updated);
+  } catch (err: any) {
+    logger.error('Error updating settings:', err);
+    res.status(400).json({ error: String(err.message || err) });
   }
 });
 

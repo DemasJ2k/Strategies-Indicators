@@ -17,6 +17,7 @@ import PortfolioRadar from './components/PortfolioRadar';
 import JournalPanel from './components/JournalPanel';
 import ChatAssistant from './components/ChatAssistant';
 import AuthPanel from './components/AuthPanel';
+import WorkspaceSettingsPanel from './components/WorkspaceSettingsPanel';
 import { useAgentStore } from './store/useAgentStore';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -88,7 +89,10 @@ export default function App() {
         <TradePlanView />
       </div>
 
-      <SettingsPanel />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SettingsPanel />
+        <WorkspaceSettingsPanel />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <PortfolioRadar />
