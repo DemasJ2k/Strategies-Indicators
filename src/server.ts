@@ -6,6 +6,9 @@ import { getProvider } from '@data-providers/index';
 import { createLogger } from '@utils/agent_logger';
 import { runAnalysisFromBody } from './server-analysis-helper';
 import { startLiveStream, stopLiveStream } from './live/liveRouter';
+import { computeExposure } from '@portfolio/exposure';
+import { computeCorrelationMatrix } from '@portfolio/correlation';
+import { computeBasketRisk } from '@portfolio/riskEngine';
 
 const logger = createLogger('Server');
 const app = express();
@@ -222,6 +225,40 @@ app.post('/data/live/stop', (req: Request, res: Response) => {
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * POST /portfolio/radar
+ * ═══════════════════════════════════════════════════════════════
+ * Portfolio risk analysis endpoint
+ */
+app.post('/portfolio/radar', async (req: Request, res: Response) => {
+  try {
+    const { positions, priceHistory, balance } = req.body;
+
+    if (!positions || !priceHistory) {
+      return res.status(400).json({ error: 'positions and priceHistory required' });
+    }
+
+    const exposures = computeExposure(positions, balance || 5000);
+    const corr = computeCorrelationMatrix(positions, priceHistory);
+    const basket = computeBasketRisk(positions, corr, exposures, balance || 5000);
+
+    logger.info(
+      `✓ Portfolio radar analysis complete: ${positions.length} positions, risk score ${basket.score.toFixed(1)}`
+    );
+
+    res.json({
+      exposure: exposures,
+      correlationMatrix: corr,
+      basket,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('Error in /portfolio/radar:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * GET /health
  * ═══════════════════════════════════════════════════════════════
  * Health check endpoint
@@ -250,6 +287,7 @@ httpServer.listen(PORT, () => {
   logger.info(`   GET  http://localhost:${PORT}/data/ohlc`);
   logger.info(`   POST http://localhost:${PORT}/data/live/start`);
   logger.info(`   POST http://localhost:${PORT}/data/live/stop`);
+  logger.info(`   POST http://localhost:${PORT}/portfolio/radar`);
   logger.info(`   GET  http://localhost:${PORT}/health`);
   logger.info(`\n🔌 WebSocket: Socket.IO ready for live updates\n`);
 });

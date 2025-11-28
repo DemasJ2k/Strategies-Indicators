@@ -13,6 +13,7 @@ import SettingsPanel from './components/SettingsPanel';
 import DebugPanel from './components/DebugPanel';
 import SignalCard from './components/SignalCard';
 import LiveMarketPanel from './components/LiveMarketPanel';
+import PortfolioRadar from './components/PortfolioRadar';
 import { useAgentStore } from './store/useAgentStore';
 
 export default function App() {
@@ -58,6 +59,8 @@ export default function App() {
         <SettingsPanel />
         <DebugPanel />
       </div>
+
+      <PortfolioRadar />
     </div>
   );
 }
