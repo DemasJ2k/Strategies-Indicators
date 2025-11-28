@@ -17,7 +17,7 @@ function genId(prefix: string): string {
  * ═══════════════════════════════════════════════════════════════
  * Convert HTTP request body to RawMarketData and run analysis
  */
-export async function runAnalysisFromBody(body: any, routeLabel: string) {
+export async function runAnalysisFromBody(body: any, routeLabel: string, userId?: string) {
   const candles = body.candles || [];
 
   if (candles.length < 3) {
@@ -51,14 +51,16 @@ export async function runAnalysisFromBody(body: any, routeLabel: string) {
     symbol: body.symbol,
   });
 
-  // Auto-journal the signal to database
+  // Auto-journal the signal to database (only if userId provided)
   let signalId: string | null = null;
-  try {
-    signalId = await saveSignal(signal, marketContext, routeLabel.replace('/', ''));
-    logger.info(`✓ Signal saved to database: ${signalId}`);
-  } catch (e) {
-    logger.error('Error saving signal to database:', e);
-    // Continue even if DB save fails
+  if (userId) {
+    try {
+      signalId = await saveSignal(signal, marketContext, routeLabel.replace('/', ''), userId);
+      logger.info(`✓ Signal saved to database: ${signalId}`);
+    } catch (e) {
+      logger.error('Error saving signal to database:', e);
+      // Continue even if DB save fails
+    }
   }
 
   const result = {

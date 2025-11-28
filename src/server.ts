@@ -12,6 +12,8 @@ import { computeBasketRisk } from '@portfolio/riskEngine';
 import { createTrade, closeTrade, listRecentTrades } from './journal/journalService';
 import { openai } from './ai/openaiClient';
 import { buildAssistantContext } from './assistant/contextBuilder';
+import { registerUser, loginUser } from './auth/authService';
+import { requireAuth } from './auth/middleware';
 import type { PortfolioPosition } from '@portfolio/types';
 
 const logger = createLogger('Server');
@@ -54,13 +56,74 @@ export { io };
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * POST /auth/register
+ * ═══════════════════════════════════════════════════════════════
+ * Register a new user account
+ */
+app.post('/auth/register', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = await registerUser(email, password);
+    logger.info(`✅ New user registered: ${user.email}`);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
+  } catch (err: any) {
+    logger.error('Error in /auth/register:', err);
+    res.status(400).json({
+      error: String(err?.message || err),
+    });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * POST /auth/login
+ * ═══════════════════════════════════════════════════════════════
+ * Login with email and password, returns JWT token
+ */
+app.post('/auth/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const token = await loginUser(email, password);
+    logger.info(`🔐 User logged in: ${email}`);
+
+    res.json({
+      success: true,
+      token,
+    });
+  } catch (err: any) {
+    logger.error('Error in /auth/login:', err);
+    res.status(401).json({
+      error: String(err?.message || err),
+    });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * POST /analyze
  * ═══════════════════════════════════════════════════════════════
  * Main endpoint for analyzing market data
  */
-app.post('/analyze', async (req: Request, res: Response) => {
+app.post('/analyze', requireAuth, async (req: Request, res: Response) => {
   try {
-    const result = await runAnalysisFromBody(req.body, '/analyze');
+    const result = await runAnalysisFromBody(req.body, '/analyze', req.user!.id);
     res.json(result);
   } catch (err: any) {
     logger.error('Error in /analyze:', err);
@@ -190,7 +253,7 @@ app.get('/data/ohlc', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * Start live market data stream from a broker
  */
-app.post('/data/live/start', async (req: Request, res: Response) => {
+app.post('/data/live/start', requireAuth, async (req: Request, res: Response) => {
   try {
     const { provider, symbol, timeframe } = req.body;
     if (!provider || !symbol || !timeframe) {
@@ -212,7 +275,7 @@ app.post('/data/live/start', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * Stop live market data stream
  */
-app.post('/data/live/stop', (req: Request, res: Response) => {
+app.post('/data/live/stop', requireAuth, (req: Request, res: Response) => {
   try {
     const { provider, symbol, timeframe } = req.body;
     if (!provider || !symbol || !timeframe) {
@@ -233,7 +296,7 @@ app.post('/data/live/stop', (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * Portfolio risk analysis endpoint
  */
-app.post('/portfolio/radar', async (req: Request, res: Response) => {
+app.post('/portfolio/radar', requireAuth, async (req: Request, res: Response) => {
   try {
     const { positions, priceHistory, balance } = req.body;
 
@@ -267,9 +330,9 @@ app.post('/portfolio/radar', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * Create a new trade journal entry
  */
-app.post('/journal/trades', async (req: Request, res: Response) => {
+app.post('/journal/trades', requireAuth, async (req: Request, res: Response) => {
   try {
-    const trade = await createTrade(req.body);
+    const trade = await createTrade(req.body, req.user!.id);
     logger.info(`✓ Trade created: ${trade.id} - ${trade.symbol} ${trade.direction}`);
     res.json(trade);
   } catch (err: any) {
@@ -284,10 +347,10 @@ app.post('/journal/trades', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * Close an existing trade with exit price and time
  */
-app.post('/journal/trades/:id/close', async (req: Request, res: Response) => {
+app.post('/journal/trades/:id/close', requireAuth, async (req: Request, res: Response) => {
   try {
     const { exitPrice, exitTime } = req.body;
-    const trade = await closeTrade(req.params.id, exitPrice, exitTime);
+    const trade = await closeTrade(req.params.id, exitPrice, exitTime, req.user!.id);
     logger.info(`✓ Trade closed: ${trade.id} - PnL: ${trade.pnl}`);
     res.json(trade);
   } catch (err: any) {
@@ -302,10 +365,10 @@ app.post('/journal/trades/:id/close', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * List recent trades with optional limit
  */
-app.get('/journal/trades', async (req: Request, res: Response) => {
+app.get('/journal/trades', requireAuth, async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
-    const trades = await listRecentTrades(limit);
+    const trades = await listRecentTrades(limit, req.user!.id);
     res.json(trades);
   } catch (err: any) {
     logger.error('Error listing trades:', err);
@@ -319,7 +382,7 @@ app.get('/journal/trades', async (req: Request, res: Response) => {
  * ═══════════════════════════════════════════════════════════════
  * AI Chat Assistant powered by OpenAI
  */
-app.post('/assistant/chat', async (req: Request, res: Response) => {
+app.post('/assistant/chat', requireAuth, async (req: Request, res: Response) => {
   try {
     const {
       message,
@@ -341,6 +404,7 @@ app.post('/assistant/chat', async (req: Request, res: Response) => {
         includeSignals: !!includeSignals,
         includeTrades: !!includeTrades,
         includePortfolio: !!includePortfolio,
+        userId: req.user!.id,
       },
       latestAnalysis
     );

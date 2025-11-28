@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAgentStore } from '../store/useAgentStore';
+import { getAuthHeader } from '../store/useAuthStore';
 
 interface Trade {
   id: string;
@@ -28,7 +29,9 @@ export default function JournalPanel() {
   async function loadTrades() {
     try {
       setLoading(true);
-      const res = await fetch('/api/journal/trades?limit=50');
+      const res = await fetch('/api/journal/trades?limit=50', {
+        headers: getAuthHeader(),
+      });
       const json = await res.json();
       setTrades(json);
     } catch (e: any) {
@@ -62,7 +65,10 @@ export default function JournalPanel() {
 
     const res = await fetch('/api/journal/trades', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
       body: JSON.stringify(payload),
     });
 

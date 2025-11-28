@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAuthHeader } from '../store/useAuthStore';
 
 export default function PortfolioRadar() {
   const [data, setData] = useState<any>(null);
@@ -19,7 +20,10 @@ export default function PortfolioRadar() {
 
       const res = await fetch(`/api/portfolio/radar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
         body: JSON.stringify({
           positions,
           priceHistory,

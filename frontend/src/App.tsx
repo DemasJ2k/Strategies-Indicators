@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import LiveListener from './components/LiveListener';
 import LoadingOverlay from './components/LoadingOverlay';
 import ErrorBanner from './components/ErrorBanner';
@@ -16,20 +16,51 @@ import LiveMarketPanel from './components/LiveMarketPanel';
 import PortfolioRadar from './components/PortfolioRadar';
 import JournalPanel from './components/JournalPanel';
 import ChatAssistant from './components/ChatAssistant';
+import AuthPanel from './components/AuthPanel';
 import { useAgentStore } from './store/useAgentStore';
+import { useAuthStore } from './store/useAuthStore';
 
 export default function App() {
   const result = useAgentStore((s) => s.result);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const initializeAuth = useAuthStore((s) => s.initializeAuth);
+
+  // Initialize auth on app load
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Show auth panel if not authenticated
+  if (!isAuthenticated) {
+    return <AuthPanel />;
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <LiveListener />
       <LoadingOverlay />
 
-      <h1 className="text-3xl font-bold mb-2">Market Playbook Agent</h1>
-      <p className="text-sm text-gray-400">
-        Upload candles or import CSV. Replay the market and watch NBB / Tori / Fabio / JadeCap rotate in real time.
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h1 className="text-3xl font-bold">Market Playbook Agent</h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Upload candles or import CSV. Replay the market and watch NBB / Tori / Fabio / JadeCap rotate in real time.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">
+            {user?.email}
+          </span>
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded text-sm border border-red-600/30 transition"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
 
       <ErrorBanner />
 

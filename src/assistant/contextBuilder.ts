@@ -4,6 +4,7 @@ export interface AssistantContextOptions {
   includeSignals?: boolean;
   includeTrades?: boolean;
   includePortfolio?: boolean;
+  userId?: string;
 }
 
 /**
@@ -34,12 +35,12 @@ export async function buildAssistantContext(
 
   // Include recent signals from database
   if (opts.includeSignals) {
-    context.recentSignals = await listRecentSignals(20);
+    context.recentSignals = await listRecentSignals(20, opts.userId);
   }
 
   // Include recent trades from database
   if (opts.includeTrades) {
-    context.recentTrades = await listRecentTrades(20);
+    context.recentTrades = await listRecentTrades(20, opts.userId);
   }
 
   // Portfolio placeholder - will be enhanced with real data

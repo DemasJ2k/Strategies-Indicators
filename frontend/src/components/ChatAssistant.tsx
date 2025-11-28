@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAgentStore } from '../store/useAgentStore';
+import { getAuthHeader } from '../store/useAuthStore';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -37,7 +38,10 @@ export default function ChatAssistant() {
 
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
         body: JSON.stringify(body),
       });
 

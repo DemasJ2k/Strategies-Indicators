@@ -3,17 +3,18 @@ import { pool } from '../db';
 /**
  * Save a Flowrex signal to the database
  */
-export async function saveSignal(signal: any, context: any, source: string) {
+export async function saveSignal(signal: any, context: any, source: string, userId: string) {
   const res = await pool.query(
     `
       INSERT INTO signals (
-        symbol, instrument, direction, playbook, primary_playbook, backup_playbook,
+        user_id, symbol, instrument, direction, playbook, primary_playbook, backup_playbook,
         confidence, grade, reasons, risk_hints, timeframe, source, raw_context
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING id
     `,
     [
+      userId,
       signal.symbol || context.symbol,
       signal.instrument,
       signal.direction,
@@ -53,17 +54,18 @@ export interface TradeInput {
 /**
  * Create a new trade journal entry
  */
-export async function createTrade(input: TradeInput) {
+export async function createTrade(input: TradeInput, userId: string) {
   const res = await pool.query(
     `
       INSERT INTO trades (
-        signal_id,symbol,instrument,direction,playbook,
+        user_id,signal_id,symbol,instrument,direction,playbook,
         entry_time,entry_price,size,status,session,notes
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *
     `,
     [
+      userId,
       input.signalId || null,
       input.symbol,
       input.instrument,
@@ -84,9 +86,9 @@ export async function createTrade(input: TradeInput) {
 /**
  * Close an existing trade with exit price and time
  */
-export async function closeTrade(tradeId: string, exitPrice: number, exitTime: string) {
-  // Fetch original trade
-  const tRes = await pool.query(`SELECT * FROM trades WHERE id = $1`, [tradeId]);
+export async function closeTrade(tradeId: string, exitPrice: number, exitTime: string, userId: string) {
+  // Fetch original trade - ensure it belongs to the user
+  const tRes = await pool.query(`SELECT * FROM trades WHERE id = $1 AND user_id = $2`, [tradeId, userId]);
   if (!tRes.rowCount) throw new Error('Trade not found');
 
   const trade = tRes.rows[0];
@@ -106,10 +108,10 @@ export async function closeTrade(tradeId: string, exitPrice: number, exitTime: s
           pnl        = $4,
           rr         = $5,
           status     = 'closed'
-      WHERE id = $1
+      WHERE id = $1 AND user_id = $6
       RETURNING *
     `,
-    [tradeId, exitPrice, exitTime, pnl, rr]
+    [tradeId, exitPrice, exitTime, pnl, rr, userId]
   );
 
   return res.rows[0];
@@ -118,13 +120,21 @@ export async function closeTrade(tradeId: string, exitPrice: number, exitTime: s
 /**
  * List recent trades with optional limit
  */
-export async function listRecentTrades(limit = 50) {
-  const res = await pool.query(
-    `SELECT * FROM trades ORDER BY entry_time DESC LIMIT $1`,
-    [limit]
-  );
-
-  return res.rows;
+export async function listRecentTrades(limit = 50, userId?: string) {
+  if (userId) {
+    const res = await pool.query(
+      `SELECT * FROM trades WHERE user_id = $1 ORDER BY entry_time DESC LIMIT $2`,
+      [userId, limit]
+    );
+    return res.rows;
+  } else {
+    // For backward compatibility with webhooks that don't have user context
+    const res = await pool.query(
+      `SELECT * FROM trades ORDER BY entry_time DESC LIMIT $1`,
+      [limit]
+    );
+    return res.rows;
+  }
 }
 
 /**

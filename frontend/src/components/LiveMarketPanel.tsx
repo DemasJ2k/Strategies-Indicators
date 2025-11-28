@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAgentStore } from '../store/useAgentStore';
+import { getAuthHeader } from '../store/useAuthStore';
 
 async function postJSON(path: string, body: any) {
   const res = await fetch(`/api${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeader(),
     },
     body: JSON.stringify(body),
   });

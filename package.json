@@ -36,13 +36,17 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.6",
     "@types/ws": "^8.18.1",
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "openai": "^6.9.1",
     "pg": "^8.16.3",
     "socket.io": "^4.8.1",
