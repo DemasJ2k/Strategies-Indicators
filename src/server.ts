@@ -4,6 +4,7 @@ import cors from 'cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { buildMarketContext, RawMarketData } from '@agent/context';
 import { classifyMarket } from '@agent/classifier';
+import { buildSignal } from '@signals/signalEngine';
 import { createLogger } from '@utils/agent_logger';
 
 const logger = createLogger('Server');
@@ -79,6 +80,13 @@ async function runAnalysisFromBody(body: any, routeLabel: string) {
   // Classify playbook
   const classification = classifyMarket(marketContext);
 
+  // Build unified Flowrex signal
+  const signal = buildSignal(marketContext, classification, {
+    instrument: body.instrument || 'UNKNOWN',
+    timeframe: body.timeframe || '15m',
+    symbol: body.symbol,
+  });
+
   const result = {
     id: genId(routeLabel),
     timestamp: new Date().toISOString(),
@@ -86,6 +94,7 @@ async function runAnalysisFromBody(body: any, routeLabel: string) {
     timeframe: body.timeframe || '15m',
     context: marketContext,
     classification,
+    signal, // ⚡ NEW: Unified Flowrex signal
     tradePlan: {
       playbook: classification.signal?.playbookName || 'NONE',
       direction: classification.signal?.direction || 'NONE',
@@ -98,7 +107,7 @@ async function runAnalysisFromBody(body: any, routeLabel: string) {
   };
 
   logger.info(
-    `✓ Analysis complete [${routeLabel}]: ${body.instrument} ${body.timeframe} (${candles.length} candles) → ${result.tradePlan.playbook}`
+    `✓ Analysis complete [${routeLabel}]: ${body.instrument} ${body.timeframe} (${candles.length} candles) → ${signal.playbook} (${signal.direction.toUpperCase()} @ ${signal.confidence}% / Grade ${signal.grade})`
   );
 
   return result;
@@ -146,6 +155,7 @@ app.post('/webhook/tradingview', async (req: Request, res: Response) => {
       instrument: body.instrument,
       timeframe: body.timeframe,
       candles: body.candles,
+      signal: result.signal, // ⚡ Include Flowrex signal
       result,
     });
 
@@ -182,6 +192,7 @@ app.post('/webhook/mt5', async (req: Request, res: Response) => {
       instrument: body.instrument,
       timeframe: body.timeframe,
       candles: body.candles,
+      signal: result.signal, // ⚡ Include Flowrex signal
       result,
     });
 

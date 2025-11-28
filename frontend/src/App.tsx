@@ -11,8 +11,12 @@ import Chart from './components/Chart';
 import PlaybookDetail from './components/PlaybookDetail';
 import SettingsPanel from './components/SettingsPanel';
 import DebugPanel from './components/DebugPanel';
+import SignalCard from './components/SignalCard';
+import { useAgentStore } from './store/useAgentStore';
 
 export default function App() {
+  const result = useAgentStore((s) => s.result);
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <LiveListener />
@@ -31,6 +35,11 @@ export default function App() {
       </div>
 
       <ReplayController />
+
+      {/* ⚡ FLOWREX SIGNAL CARD - NEW IN PHASE 22 */}
+      {result?.signal && (
+        <SignalCard signal={result.signal} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Chart />

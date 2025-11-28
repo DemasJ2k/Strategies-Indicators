@@ -25,7 +25,8 @@
       "@loaders/*": ["src/loaders/*"],
       "@data-sources/*": ["src/data_sources/*"],
       "@sim/*": ["src/sim/*"],
-      "@runners/*": ["src/runners/*"]
+      "@runners/*": ["src/runners/*"],
+      "@signals/*": ["src/signals/*"]
     }
   },
   "include": ["src/**/*", "index.ts"],
