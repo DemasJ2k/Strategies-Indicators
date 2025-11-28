@@ -1,25 +1,14 @@
-export interface MarketData {
-  price: number;
+export interface RawCandle {
+  open: number;
   high: number;
   low: number;
+  close: number;
   volume: number;
-  htfTrend: 'bullish' | 'bearish' | 'neutral';
-  session: 'asian' | 'london' | 'ny';
-  liquidityZones: {
-    high: number[];
-    low: number[];
-    swept: { level: number; direction: 'high' | 'low' }[];
-  };
-  trendline: {
-    exists: boolean;
-    touches: number;
-    respected: boolean;
-  };
-  balanceZones: {
-    inBalance: boolean;
-    lvnDetected: boolean;
-  };
-  volatility: 'high' | 'low';
+  time?: number;
+}
+
+export interface RawMarketData {
+  candles: RawCandle[];
   previousDayHigh: number;
   previousDayLow: number;
 }
