@@ -5,6 +5,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { buildMarketContext, RawMarketData } from '@agent/context';
 import { classifyMarket } from '@agent/classifier';
 import { buildSignal } from '@signals/signalEngine';
+import { getProvider } from '@data-providers/index';
 import { createLogger } from '@utils/agent_logger';
 
 const logger = createLogger('Server');
@@ -207,6 +208,46 @@ app.post('/webhook/mt5', async (req: Request, res: Response) => {
 
 /**
  * ═══════════════════════════════════════════════════════════════
+ * GET /data/ohlc
+ * ═══════════════════════════════════════════════════════════════
+ * Fetch historical OHLC data from broker/exchange
+ * Query params: provider, symbol, timeframe, limit
+ */
+app.get('/data/ohlc', async (req: Request, res: Response) => {
+  try {
+    const { provider, symbol, timeframe, limit } = req.query as any;
+
+    if (!provider || !symbol || !timeframe) {
+      return res.status(400).json({
+        error: 'Missing required parameters: provider, symbol, timeframe',
+      });
+    }
+
+    const dataProvider = getProvider(provider.toUpperCase());
+    if (!dataProvider) {
+      return res.status(400).json({
+        error: `Unknown provider: ${provider}. Available: OANDA, FXCM, BINANCE, BYBIT`,
+      });
+    }
+
+    const candleLimit = Number(limit || 200);
+    const candles = await dataProvider.fetchOHLC(symbol, timeframe, candleLimit);
+
+    logger.info(
+      `✓ Fetched ${candles.length} candles from ${provider.toUpperCase()} for ${symbol} ${timeframe}`
+    );
+
+    res.json({ candles });
+  } catch (err: any) {
+    logger.error('Error fetching OHLC data:', err);
+    res.status(500).json({
+      error: String(err?.message || err),
+    });
+  }
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════
  * GET /health
  * ═══════════════════════════════════════════════════════════════
  * Health check endpoint
@@ -232,6 +273,7 @@ httpServer.listen(PORT, () => {
   logger.info(`   POST http://localhost:${PORT}/analyze`);
   logger.info(`   POST http://localhost:${PORT}/webhook/tradingview`);
   logger.info(`   POST http://localhost:${PORT}/webhook/mt5`);
+  logger.info(`   GET  http://localhost:${PORT}/data/ohlc`);
   logger.info(`   GET  http://localhost:${PORT}/health`);
   logger.info(`\n🔌 WebSocket: Socket.IO ready for live updates\n`);
 });
