@@ -1,4 +1,5 @@
 import { MarketContext } from '@custom-types/context';
+import { RawMarketData } from '@custom-types/market';
 import { detectTrend } from '@detectors/trend';
 import { detectLiquidity } from '@detectors/liquidity';
 import { detectSession } from '@detectors/session';
@@ -10,6 +11,9 @@ import { createLogger } from '@utils/agent_logger';
 // Create logger for context builder
 const logger = createLogger('Context-Builder');
 
+// Re-export for downstream modules importing from @agent/context
+export type { RawMarketData };
+
 /**
  * ═══════════════════════════════════════════════════════════════
  * MARKET CONTEXT BUILDER
@@ -18,23 +22,6 @@ const logger = createLogger('Context-Builder');
  *
  * This is the glue between raw price data and the agent.
  */
-
-/**
- * Raw Market Data Interface
- * This is what you'd receive from your data source
- */
-export interface RawMarketData {
-  candles: Array<{
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-    time?: number;
-  }>;
-  previousDayHigh: number;
-  previousDayLow: number;
-}
 
 /**
  * Build Market Context
